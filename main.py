@@ -19,8 +19,8 @@ import os
 import gc
 
 # Params
-IMG_W = 1024
-IMG_H = 512
+IMG_W = 700
+IMG_H = 500
 
 
 def new_dir(dir_path):
