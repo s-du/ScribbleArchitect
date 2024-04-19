@@ -1,0 +1,1 @@
+black and white facility map for a hospital complex, show parking spaces, main entrance, bus stop, building A, building B, Building C, and pharmacy on the map

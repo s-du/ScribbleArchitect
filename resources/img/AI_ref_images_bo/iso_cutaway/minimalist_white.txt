@@ -1,0 +1,1 @@
+A 3D mesh of the interior of an house with no texture, render with only ambient occlusion, in blender
