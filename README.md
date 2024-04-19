@@ -11,7 +11,14 @@ Image generation from simple brush strokes, in realtime. The functions have been
 <div style="text-align: center;">
     <img src="docs/anim1.gif" width="800" alt="Description" style="display: block; margin: 0 auto;">
     <p>
-    <i style="display: block; margin-top: 5px;">example showing the change of style</i>
+    <i style="display: block; margin-top: 5px;">example showing the change of style (interior)</i>
+    </p>
+</div>
+
+<div style="text-align: center;">
+    <img src="docs/anim4.gif" width="800" alt="Description" style="display: block; margin: 0 auto;">
+    <p>
+    <i style="display: block; margin-top: 5px;">example showing the change of style (exterior) </i>
     </p>
 </div>
 
@@ -27,9 +34,11 @@ pip3 install torch torchvision torchaudio --index-url https://download.pytorch.o
 - Launch main.py
 
 ## Usage
-Choose a 'type' of architectural design (exterior render, facade elevation, interior render, ...) and a style. On the left zone, paint with a brush and see the proposed image adapting live. 
+Choose a 'type' of architectural design (exterior render, facade elevation, interior render, ...) and a style. On the left zone, paint with a brush and see the proposed image adapting live. If you lack inspiration, or for testing purpose, a example line drawing can be generated automatically.
 Mouse wheel to adapt cursor size. 
 Voilà!
+
+
 
 ## Options
 The SD model can be adapted in the lcm.py file. Live drawing requires a strong GPU, I would advice to reduce image size (in main.py) if too laggy!
