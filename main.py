@@ -220,6 +220,7 @@ class PaintLCM(QMainWindow):
         self.step_slider.valueChanged.connect(self.update_image)
         self.cfg_slider.valueChanged.connect(self.update_image)
         self.strength_slider.valueChanged.connect(self.update_image)
+        self.strength_slider_cn.valueChanged.connect(self.update_image)
 
         # Connect the text edit to the update_image function
         self.textEdit.setWordWrapMode(QTextOption.WrapMode.WordWrap)
@@ -229,9 +230,11 @@ class PaintLCM(QMainWindow):
 
         # checkboxes
         self.checkBox_sp.stateChanged.connect(self.change_style)
+        self.checkBox_hide.stateChanged.connect(self.toggle_canvas)
 
         # other actions
         self.actionAdvanced_options.triggered.connect(self.toggle_dock_visibility)
+        self.actionScreen_capture_options.triggered.connect(self.toggle_screen_options)
 
         # seed edit
         self.lineEdit_seed.textChanged.connect(self.update_image)
@@ -259,6 +262,22 @@ class PaintLCM(QMainWindow):
             self.dockWidget_2.hide()
         else:
             self.dockWidget_2.show()
+
+    def toggle_screen_options(self):
+        if self.dockWidget_3.isVisible():
+            self.dockWidget_3.hide()
+        else:
+            self.dockWidget_3.show()
+
+    def toggle_canvas(self):
+        # Hide or show canvas based on checkbox state
+        if self.checkBox_hide.isChecked():
+            self.canvas.hide()
+        else:
+            self.canvas.show()
+
+        # Adjust the size of the window
+        self.adjustSize()
 
     def reset_canvas(self):
         self.canvas.clean_scene()
@@ -435,19 +454,13 @@ class PaintLCM(QMainWindow):
         if self.checkBox.isChecked():
             self.update_image()
 
-    """
-    def change_preimg_style(self):
-        i = self.comboBox_style.currentIndex()
-
-        self.style = i
-    """
-
     def update_image(self):
         # gather slider parameters:
         steps = self.step_slider.value()
         cfg = self.cfg_slider.value() / 10
 
         ip_strength = self.strength_slider.value() / 100
+        cn_strength = self.strength_slider_cn.value() / 100
 
         # get prompts
         p = self.textEdit.toPlainText()
@@ -487,7 +500,8 @@ class PaintLCM(QMainWindow):
             guidance_scale=cfg,
             seed=seed,
             ip_scale=ip_strength,
-            ip_image_to_use=ip_img_ref
+            ip_image_to_use=ip_img_ref,
+            cn_strength=cn_strength
         )
 
         self.out.save('result.jpg')

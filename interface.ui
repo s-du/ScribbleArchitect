@@ -198,7 +198,7 @@
     <number>2</number>
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_2">
-    <layout class="QVBoxLayout" name="verticalLayout_8">
+    <layout class="QVBoxLayout" name="verticalLayout_10">
      <item>
       <widget class="QLabel" name="label_6">
        <property name="text">
@@ -285,7 +285,7 @@
           <number>15</number>
          </property>
          <property name="value">
-          <number>10</number>
+          <number>6</number>
          </property>
          <property name="orientation">
           <enum>Qt::Horizontal</enum>
@@ -383,10 +383,10 @@
           <number>5</number>
          </property>
          <property name="value">
-          <number>65</number>
+          <number>80</number>
          </property>
          <property name="sliderPosition">
-          <number>65</number>
+          <number>80</number>
          </property>
          <property name="orientation">
           <enum>Qt::Horizontal</enum>
@@ -414,6 +414,71 @@
        </item>
       </layout>
      </item>
+     <item>
+      <layout class="QVBoxLayout" name="verticalLayout_8">
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayout_3">
+         <item>
+          <widget class="QLabel" name="label_10">
+           <property name="text">
+            <string>CN strength</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <widget class="QSlider" name="strength_slider_cn">
+         <property name="maximumSize">
+          <size>
+           <width>16777215</width>
+           <height>16777215</height>
+          </size>
+         </property>
+         <property name="minimum">
+          <number>1</number>
+         </property>
+         <property name="maximum">
+          <number>100</number>
+         </property>
+         <property name="singleStep">
+          <number>5</number>
+         </property>
+         <property name="value">
+          <number>80</number>
+         </property>
+         <property name="sliderPosition">
+          <number>80</number>
+         </property>
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="tickPosition">
+          <enum>QSlider::TicksBelow</enum>
+         </property>
+         <property name="tickInterval">
+          <number>5</number>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="verticalSpacer_4">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </item>
     </layout>
    </widget>
   </widget>
@@ -426,6 +491,13 @@
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_3">
     <layout class="QVBoxLayout" name="verticalLayout_9">
+     <item>
+      <widget class="QCheckBox" name="checkBox_hide">
+       <property name="text">
+        <string>Hide input zone</string>
+       </property>
+      </widget>
+     </item>
      <item>
       <widget class="QLabel" name="label_9">
        <property name="text">

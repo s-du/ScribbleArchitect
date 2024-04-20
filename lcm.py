@@ -126,6 +126,7 @@ def load_models(model_id="Lykon/dreamshaper-8", use_ip=True):
             seed=random.randrange(0, 2**63),
             ip_scale=0.8,
             ip_image_to_use='',
+            cn_strength=0.8,
     ):
 
         with torch.inference_mode():
@@ -141,7 +142,8 @@ def load_models(model_id="Lykon/dreamshaper-8", use_ip=True):
                             generator=generator.manual_seed(seed),
                             num_inference_steps=num_inference_steps,
                             guidance_scale=guidance_scale,
-                            strength=strength
+                            strength=strength,
+                            controlnet_conditioning_scale=cn_strength
                         ).images[0]
                     else:
                         return pipe(
