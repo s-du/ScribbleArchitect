@@ -96,10 +96,11 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="separator"/>
    <addaction name="brush_action"/>
    <addaction name="eraser_action"/>
    <addaction name="color_action"/>
+   <addaction name="separator"/>
+   <addaction name="capture_action"/>
    <addaction name="separator"/>
    <addaction name="export_action"/>
    <addaction name="separator"/>
@@ -456,6 +457,14 @@
   <action name="actionAdvanced_options">
    <property name="text">
     <string>Advanced options</string>
+   </property>
+  </action>
+  <action name="capture_action">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Capture Screen</string>
    </property>
   </action>
  </widget>

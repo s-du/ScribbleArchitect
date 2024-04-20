@@ -9,6 +9,8 @@ from PyQt6.QtGui import *
 from PyQt6.QtWidgets import *
 from PyQt6 import uic
 
+import numpy as np
+
 import widgets as wid
 import resources as res
 from lcm import *
@@ -21,6 +23,7 @@ import gc
 # Params
 IMG_W = 700
 IMG_H = 500
+CAPTURE_INT = 1000  # milliseconds
 
 
 def new_dir(dir_path):
@@ -90,6 +93,12 @@ class PaintLCM(QMainWindow):
         self.infer = load_models()
         self.im = None
         self.original_parent = None
+
+        # add capture box
+        self.box = wid.TransparentBox(self.img_dim)
+        self.capture_interval = CAPTURE_INT
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.captureScreen)
 
         # pre-img parameters
         self.simple_prompts = ['A building architectural render',
@@ -186,6 +195,7 @@ class PaintLCM(QMainWindow):
         self.eraser_action.triggered.connect(lambda: self.canvas.set_tool('eraser'))
         self.color_action.triggered.connect(self.reset_canvas)
         self.export_action.triggered.connect(self.save_output)
+        self.capture_action.triggered.connect(self.toggle_capture)
 
         # self.actionLoad_IP_Adapter_reference_image.triggered.connect(self.define_ip_ref)
         self.pushButton.clicked.connect(self.update_image)
@@ -232,6 +242,7 @@ class PaintLCM(QMainWindow):
         self.add_icon(res.find(f'img/eraser{suf}.png'), self.eraser_action)
         self.add_icon(res.find(f'img/mop{suf}.png'), self.color_action)
         self.add_icon(res.find(f'img/save_as{suf}.png'), self.export_action)
+        self.add_icon(res.find(f'img/crop{suf}.png'), self.capture_action)
 
         # run first inference
         self.update_image()
@@ -276,6 +287,98 @@ class PaintLCM(QMainWindow):
         self.canvas.clean_scene()
         self.canvas.setPhoto(pixmap)
 
+    # Screen capture __________________________________________
+    def toggle_capture(self):
+        if self.capture_action.isChecked():
+            # disable tools
+            self.brush_action.setEnabled(False)
+            self.eraser_action.setEnabled(False)
+
+            # remove existing items
+            self.canvas.clear_drawing()
+
+            # launch capture
+            self.box.show()
+            self.timer.start(self.capture_interval)
+
+        else:
+            self.brush_action.setEnabled(True)
+            self.eraser_action.setEnabled(True)
+
+            self.timer.stop()
+            # stop capture
+            self.box.hide()
+
+    def captureScreen(self):
+        # Get geometry of the transparent box
+        x, y, width, height = self.box.geometry().getRect()
+        print(width, height)
+
+        screen = QApplication.primaryScreen()
+        if screen is not None:
+            pixmap = screen.grabWindow(0, x + 6, y + 6, width - 12, height - 12)
+
+            # Convert QPixmap to QImage
+            qimage = pixmap.toImage()
+
+            # Convert QImage to OpenCV format
+            temp_image = self.convertQImageToMat(qimage)
+
+            # Convert to grayscale
+            gray_image = cv2.cvtColor(temp_image, cv2.COLOR_BGR2GRAY)
+
+            gray_image = cv2.bilateralFilter(gray_image, 5, 75, 75)
+
+            # Apply Sobel edge detection
+            sobelx = cv2.Sobel(gray_image, cv2.CV_64F, 1, 0, ksize=3)
+            sobely = cv2.Sobel(gray_image, cv2.CV_64F, 0, 1, ksize=3)
+            sobel_image = cv2.sqrt(cv2.addWeighted(cv2.pow(sobelx, 2), 0.5, cv2.pow(sobely, 2), 0.5, 0))
+
+            # Normalize and convert to 8-bit format
+            sobel_image = cv2.convertScaleAbs(sobel_image)
+
+            # Invert the Sobel image
+            inverted_sobel_image = 255 - sobel_image
+
+            # Convert the inverted image back to QPixmap
+            final_pixmap = self.convertMatToQPixmap(inverted_sobel_image)
+
+            # Set the processed image on the canvas
+            self.canvas.setPhoto(final_pixmap)
+
+        # Should it update continuously
+        if self.checkBox.isChecked():
+            self.update_image()
+
+    def convertQImageToMat(self, incomingImage):
+        ''' Convert QImage to OpenCV format '''
+        incomingImage = incomingImage.convertToFormat(QImage.Format.Format_RGB32)
+        width = incomingImage.width()
+        height = incomingImage.height()
+
+        ptr = incomingImage.bits()
+        # Adjust byte count calculation based on PyQt version
+        if hasattr(incomingImage, 'sizeInBytes'):  # PyQt 5.10 and newer
+            ptr.setsize(incomingImage.sizeInBytes())
+        else:  # PyQt versions older than 5.10
+            ptr.setsize(height * width * 4)  # 4 bytes per pixel in RGB32
+
+        arr = np.array(ptr).reshape(height, width, 4)  # Copies the data
+        return cv2.cvtColor(arr, cv2.COLOR_BGRA2BGR)
+
+    def convertMatToQPixmap(self, mat):
+        ''' Convert OpenCV image format to QPixmap '''
+        rgb_image = cv2.cvtColor(mat, cv2.COLOR_GRAY2RGB)
+        h, w, ch = rgb_image.shape
+        bytes_per_line = ch * w
+        convert_to_Qt_format = QImage(rgb_image.data, w, h, bytes_per_line, QImage.Format.Format_RGB888)
+        p = convert_to_Qt_format.scaled(w, h)
+        return QPixmap.fromImage(p)
+
+    def closeEvent(self, event):
+        # Explicitly close the transparent box when the main window is closed
+        self.box.close()
+        event.accept()
 
     # Inference parameters __________________________________________
     """

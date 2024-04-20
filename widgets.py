@@ -3,7 +3,39 @@ from PyQt6.QtCore import *
 from PyQt6.QtGui import *
 from PyQt6.QtWidgets import *
 
+class TransparentBox(QWidget):
+    def __init__(self, size):
+        super().__init__()
+        self.w, self.h = size
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.dragging = False
+        self.setGeometry(100, 100, self.w + 12, self.h + 12)  # Initial position and size
 
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        pen = QPen(QColor(0, 120, 215), 6)  # Increased pen width to 6px
+        painter.setPen(pen)
+        painter.drawRect(0, 0, self.width(), self.height())  # Draw box edges
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.dragging = True
+            self.drag_position = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
+
+    def mouseMoveEvent(self, event):
+        if self.dragging and event.buttons() == Qt.MouseButton.LeftButton:
+            self.move(event.globalPosition().toPoint() - self.drag_position)
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.dragging = False
+
+    def enterEvent(self, event):
+        self.setCursor(Qt.CursorShape.SizeAllCursor)
+
+    def leaveEvent(self, event):
+        self.unsetCursor()
 
 class simpleCanvas(QGraphicsView):
     def __init__(self, img_size):
