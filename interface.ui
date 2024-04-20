@@ -72,6 +72,7 @@
      <string>Options</string>
     </property>
     <addaction name="actionAdvanced_options"/>
+    <addaction name="actionScreen_capture_options"/>
    </widget>
    <addaction name="menuExport"/>
    <addaction name="menuOptions"/>
@@ -416,6 +417,28 @@
     </layout>
    </widget>
   </widget>
+  <widget class="QDockWidget" name="dockWidget_3">
+   <property name="windowTitle">
+    <string>Screen Capture Options</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>2</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents_3">
+    <layout class="QVBoxLayout" name="verticalLayout_9">
+     <item>
+      <widget class="QLabel" name="label_9">
+       <property name="text">
+        <string>Processing type</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QComboBox" name="comboBox_lines"/>
+     </item>
+    </layout>
+   </widget>
+  </widget>
   <action name="brush_action">
    <property name="checkable">
     <bool>true</bool>
@@ -465,6 +488,11 @@
    </property>
    <property name="text">
     <string>Capture Screen</string>
+   </property>
+  </action>
+  <action name="actionScreen_capture_options">
+   <property name="text">
+    <string>Screen Capture Options</string>
    </property>
   </action>
  </widget>

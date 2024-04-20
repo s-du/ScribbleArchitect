@@ -11,6 +11,7 @@ from PyQt6 import uic
 
 import numpy as np
 
+import lcm
 import widgets as wid
 import resources as res
 from lcm import *
@@ -93,6 +94,7 @@ class PaintLCM(QMainWindow):
         self.infer = load_models()
         self.im = None
         self.original_parent = None
+        self.gray_image = None
 
         # add capture box
         self.box = wid.TransparentBox(self.img_dim)
@@ -125,7 +127,6 @@ class PaintLCM(QMainWindow):
                               res.find('img/examples/cutaway_default.png'),
                               res.find('img/examples/facade_default.png')
                               ]
-
 
         # base_dir = res.find('img/AI_ref_images')
         base_dir = res.find('img/AI_ref_images_bo')
@@ -166,19 +167,6 @@ class PaintLCM(QMainWindow):
                 self.all_ip_prompts.append(prompts)
                 self.all_ip_paths.append(image_paths)
 
-        self.comboBox.addItems([f'Type {i + 1} ({name})' for i, name in enumerate(self.type_names)])
-
-        # After initializing the comboBox and adding items with icons, set the icon size
-        desired_icon_width = 80  # Adjust the width as needed
-        desired_icon_height = 80  # Adjust the height as needed
-
-        self.comboBox_style.setIconSize(QSize(desired_icon_width, desired_icon_height))
-
-        # Loop through the flattened lists and add items with icons to the comboBox_style
-        for style, img_path in zip(self.all_ip_styles[0], self.all_ip_paths[0]):
-            icon = QIcon(img_path)
-            self.comboBox_style.addItem(icon, style)
-
         # specific variables
         if not path.exists(cache_path):
             os.makedirs(cache_path, exist_ok=True)
@@ -206,9 +194,27 @@ class PaintLCM(QMainWindow):
         # when editing canvas --> update inference
         self.canvas.endDrawing.connect(self.update_brush_stroke)
 
-        # combobox
+        # combobox ---------------------------------------
         self.comboBox.currentIndexChanged.connect(self.change_predefined_prompts)
         self.comboBox_style.currentIndexChanged.connect(self.change_style)
+        self.comboBox_lines.currentIndexChanged.connect(self.change_capture_option)
+
+        self.comboBox_lines.addItems(['Method 1', 'Method 2', 'Method 3'])
+
+        self.comboBox.addItems([f'Type {i + 1} ({name})' for i, name in enumerate(self.type_names)])
+
+        # After initializing the comboBox and adding items with icons, set the icon size
+        desired_icon_width = 80  # Adjust the width as needed
+        desired_icon_height = 80  # Adjust the height as needed
+
+        self.comboBox_style.setIconSize(QSize(desired_icon_width, desired_icon_height))
+
+        # Loop through the flattened lists and add items with icons to the comboBox_style
+        for style, img_path in zip(self.all_ip_styles[0], self.all_ip_paths[0]):
+            icon = QIcon(img_path)
+            self.comboBox_style.addItem(icon, style)
+
+        # ----------------------------------------------
 
         # Connect the sliders to the update_image function
         self.step_slider.valueChanged.connect(self.update_image)
@@ -282,7 +288,8 @@ class PaintLCM(QMainWindow):
         idx = self.comboBox.currentIndex()
         img_path = self.example_paths[idx]
         pixmap = QPixmap(img_path)
-        pixmap = pixmap.scaled(IMG_W, IMG_H,  Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+        pixmap = pixmap.scaled(IMG_W, IMG_H, Qt.AspectRatioMode.KeepAspectRatio,
+                               Qt.TransformationMode.SmoothTransformation)
 
         self.canvas.clean_scene()
         self.canvas.setPhoto(pixmap)
@@ -325,23 +332,12 @@ class PaintLCM(QMainWindow):
             temp_image = self.convertQImageToMat(qimage)
 
             # Convert to grayscale
-            gray_image = cv2.cvtColor(temp_image, cv2.COLOR_BGR2GRAY)
+            self.gray_image = cv2.cvtColor(temp_image, cv2.COLOR_BGR2GRAY)
 
-            gray_image = cv2.bilateralFilter(gray_image, 5, 75, 75)
-
-            # Apply Sobel edge detection
-            sobelx = cv2.Sobel(gray_image, cv2.CV_64F, 1, 0, ksize=3)
-            sobely = cv2.Sobel(gray_image, cv2.CV_64F, 0, 1, ksize=3)
-            sobel_image = cv2.sqrt(cv2.addWeighted(cv2.pow(sobelx, 2), 0.5, cv2.pow(sobely, 2), 0.5, 0))
-
-            # Normalize and convert to 8-bit format
-            sobel_image = cv2.convertScaleAbs(sobel_image)
-
-            # Invert the Sobel image
-            inverted_sobel_image = 255 - sobel_image
+            processed_image = lcm.screen_to_lines(self.gray_image, 0)
 
             # Convert the inverted image back to QPixmap
-            final_pixmap = self.convertMatToQPixmap(inverted_sobel_image)
+            final_pixmap = self.convertMatToQPixmap(processed_image)
 
             # Set the processed image on the canvas
             self.canvas.setPhoto(final_pixmap)
@@ -349,6 +345,21 @@ class PaintLCM(QMainWindow):
         # Should it update continuously
         if self.checkBox.isChecked():
             self.update_image()
+
+    def reprocess_capture(self, option):
+        processed_image = lcm.screen_to_lines(self.gray_image, option)
+
+        # Convert the inverted image back to QPixmap
+        final_pixmap = self.convertMatToQPixmap(processed_image)
+
+        # Set the processed image on the canvas
+        self.canvas.setPhoto(final_pixmap)
+        self.update_image()
+
+    def change_capture_option(self):
+        idx = self.comboBox_lines.currentIndex()
+        if self.gray_image is not None:
+            self.reprocess_capture(idx)
 
     def convertQImageToMat(self, incomingImage):
         ''' Convert QImage to OpenCV format '''

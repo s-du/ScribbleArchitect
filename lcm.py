@@ -23,6 +23,33 @@ model_list = ['Dreamshaper7', 'SD 1.5','Dreamshaper8','AbsoluteReality', 'RevAni
 model_ids = [ "Lykon/dreamshaper-7", "runwayml/stable-diffusion-v1-5", "Lykon/dreamshaper-8","Lykon/absolute-reality-1.81", "danbrown/RevAnimated-v1-2-2", "darkstorm2150/Protogen_x5.8_Official_Release", "stabilityai/stable-diffusion-xl-base-1.0"]
 
 
+def screen_to_lines(gray_image,option):
+    if option == 0:
+        gray_image = cv2.bilateralFilter(gray_image, 5, 75, 75)
+
+        # Apply Sobel edge detection
+        sobelx = cv2.Sobel(gray_image, cv2.CV_64F, 1, 0, ksize=3)
+        sobely = cv2.Sobel(gray_image, cv2.CV_64F, 0, 1, ksize=3)
+        sobel_image = cv2.sqrt(cv2.addWeighted(cv2.pow(sobelx, 2), 0.5, cv2.pow(sobely, 2), 0.5, 0))
+
+        # Normalize and convert to 8-bit format
+        sobel_image = cv2.convertScaleAbs(sobel_image)
+
+        # Invert the Sobel image
+        processed_image = 255 - sobel_image
+
+    elif option == 1:
+        edges = cv2.Canny(gray_image, 100, 200)
+
+        # Invert the Sobel image
+        processed_image = 255 - edges
+
+    elif option == 2:
+        processed_image = gray_image
+
+
+    return processed_image
+
 def should_use_fp16():
     if is_mac:
         return True

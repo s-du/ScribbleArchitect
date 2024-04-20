@@ -134,6 +134,13 @@ class Canvas(QGraphicsView):
         self._photo = QGraphicsPixmapItem()
         self.scene.addItem(self._photo)
 
+    def set_transparency(self, transparent):
+        """ Set the transparency of the canvas. """
+        if transparent:
+            self.setWindowOpacity(0.5)  # Semi-transparent
+        else:
+            self.setWindowOpacity(1.0)  # Opaque
+
     def create_new_scene(self, w, h):
         self.scene.clear()
         self.scene = QGraphicsScene()
