@@ -44,6 +44,6 @@ Voilà!
 The SD model can be adapted in the lcm.py file. Live drawing requires a strong GPU, I would advice to reduce image size (in main.py) if too laggy!
 
 # Included models
-The user can choose the inference model from within the UI (beware of hard drive space!). By default, the app uses Dreamshaper ('https://huggingface.co/Lykon/dreamshaper-8')
+By default, the app uses Dreamshaper (https://huggingface.co/Lykon/dreamshaper-8)
 
 ![compil](docs/s_archi_compil.png)
