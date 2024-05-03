@@ -187,6 +187,7 @@ class PaintLCM(QMainWindow):
         self.bezier_action.triggered.connect(self.switch_to_bezier)
         self.color_action.triggered.connect(self.reset_canvas)
         self.export_action.triggered.connect(self.save_output)
+        self.exporthd_action.triggered.connect(self.save_output_hd)
         self.capture_action.triggered.connect(self.toggle_capture)
 
         # self.actionLoad_IP_Adapter_reference_image.triggered.connect(self.define_ip_ref)
@@ -327,6 +328,25 @@ class PaintLCM(QMainWindow):
                 self.out.save(file_path)  # PNG is lossless by default
 
         print(f'result saved: {file_path}')
+
+    def save_output_hd(self):
+        # add code for file dialog
+        file_path, _ = QFileDialog.getSaveFileName(
+            None, "Save Image", "", "PNG Image (*.png);;JPEG Image (*.jpg *.jpeg *.JPEG)"
+        )
+
+        print('running upscale...')
+        out = lcm.tile_upscale(self.out, 1024)
+
+        # Save the image if a file path was provided, using high-quality settings for JPEG
+        if file_path:
+            if file_path.lower().endswith('.jpg') or file_path.lower().endswith('.jpeg'):
+                out.save(file_path, 'JPEG', 100)
+            else:
+                out.save(file_path)  # PNG is lossless by default
+
+        print(f'result saved: {file_path}')
+
 
     def import_example(self):
         idx = self.comboBox.currentIndex()
