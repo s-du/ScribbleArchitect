@@ -96,13 +96,17 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
+   <addaction name="pencil_action"/>
    <addaction name="brush_action"/>
+   <addaction name="bezier_action"/>
    <addaction name="eraser_action"/>
    <addaction name="color_action"/>
    <addaction name="separator"/>
+   <addaction name="import_action"/>
    <addaction name="capture_action"/>
    <addaction name="separator"/>
    <addaction name="export_action"/>
+   <addaction name="exporthd_action"/>
    <addaction name="separator"/>
   </widget>
   <widget class="QDockWidget" name="dockWidget">
@@ -556,6 +560,35 @@
    </property>
    <property name="text">
     <string>Capture Screen</string>
+   </property>
+  </action>
+  <action name="import_action">
+   <property name="text">
+    <string>Import Image</string>
+   </property>
+   <property name="toolTip">
+    <string>Import an image to process</string>
+   </property>
+  </action>
+  <action name="pencil_action">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Pencil</string>
+   </property>
+  </action>
+  <action name="bezier_action">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Bezier</string>
+   </property>
+  </action>
+  <action name="exporthd_action">
+   <property name="text">
+    <string>Export (HD)</string>
    </property>
   </action>
  </widget>

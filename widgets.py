@@ -117,6 +117,16 @@ class Canvas(QGraphicsView):
         self.drawing = False
         self.last_point = None
 
+        # bezier param
+        self.create_bezier = False
+        self.bez_nodes = []
+        self.bez_handles = []
+        self.bez_sym_handles = []
+        self.bez_lines = []
+        self.bez_sym_lines = []
+        self.bez_curve_item = None
+        self.bez_finalized = False  # To check if the curve has been finalized
+
         # custom paint cursor
         self.brush_cur = self.create_circle_cursor(10)
 
@@ -127,13 +137,47 @@ class Canvas(QGraphicsView):
         self.setViewportMargins(0, 0, 0, 0)
 
         self.setRenderHint(QPainter.RenderHint.Antialiasing)
+        self.initHelpBox()
+        self.hideHelpBox()
+
+
+    # help box
+    def initHelpBox(self):
+        self.help_box_label = QLabel("Right click to stop!", self)
+        self.help_box_label.setStyleSheet("""
+            background-color: rgba(200, 200, 200, 200);
+            border-radius: 10px;
+            padding: 10px;
+        """)
+        self.help_box_label.setFont(QFont("Arial", 12))
+        self.help_box_label.adjustSize()
+        self.help_box_label.move(10, 10)  # Adjust position as needed
+
+    def updateHelpText(self, text):
+        self.help_box_label.setText(text)
+        self.help_box_label.adjustSize()
+
+    def hideHelpBox(self):
+        """
+        Hides the help box label.
+        """
+        self.help_box_label.setVisible(False)
+
+    def showHelpBox(self):
+        """
+        Shows the help box label.
+        """
+        self.help_box_label.setVisible(True)
+
 
     def clean_scene(self):
+        self.terminate_bezier()
         self.scene = QGraphicsScene()
         self.setScene(self.scene)
 
         self._photo = QGraphicsPixmapItem()
         self.scene.addItem(self._photo)
+
 
     def set_transparency(self, transparent):
         """ Set the transparency of the canvas. """
@@ -188,14 +232,66 @@ class Canvas(QGraphicsView):
 
         # Create a cursor from the pixmap
         return QCursor(pixmap)
+    # bezier
+    def terminate_bezier(self):
+        self.finalize_curve()
+        self.reset_bezier()
+        self.hideHelpBox()
+
+    def reset_bezier(self):
+        # bezier param
+        self.bez_nodes = []
+        self.bez_handles = []
+        self.bez_sym_handles = []
+        self.bez_lines = []
+        self.bez_sym_lines = []
+        self.bez_curve_item = None
+        self.bez_finalized = False  # To check if the curve has been finalized
+
+    def update_temp_line(self):
+        if len(self.bez_lines) > 0:
+            cp = self.bez_nodes[-1].pos()
+            hp = self.bez_handles[-1].pos()
+            self.bez_lines[-1].setLine(cp.x(), cp.y(), hp.x(), hp.y())
+
+    def update_temp_sym_line(self):
+        if len(self.bez_sym_lines) > 0:
+            cp = self.bez_nodes[-1].pos()
+            sp = self.bez_sym_handles[-1].pos()
+            self.bez_sym_lines[-1].setLine(cp.x(), cp.y(), sp.x(), sp.y())
+
+    def update_curve(self):
+        if len(self.bez_nodes) < 2:
+            return
+
+        path = QPainterPath()
+        path.moveTo(self.bez_nodes[0].pos())
+
+        for i in range(1, len(self.bez_nodes)):
+            cp1 = self.bez_nodes[i - 1].pos()
+            h1 = self.bez_handles[i - 1].pos()
+            h2 = self.bez_sym_handles[i].pos()
+            cp2 = self.bez_nodes[i].pos()
+            path.cubicTo(h1, h2, cp2)
+
+        if self.bez_curve_item:
+            self.scene.removeItem(self.bez_curve_item)
+        self.bez_curve_item = self.scene.addPath(path, QPen(QColor(Qt.GlobalColor.black), 2))
+
+    def finalize_curve(self):
+        self.bez_finalized = True
+        for item in self.bez_nodes + self.bez_handles + self.bez_sym_handles + self.bez_lines + self.bez_sym_lines:
+            item.setVisible(False)
 
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
-            self.drawing = True
-            self.start_point = self.mapToScene(event.pos())
-            self.last_point = event.pos()
+            if self.current_tool in ['brush', 'eraser']:
+                self.drawing = True
+                self.create_bezier = False
+                self.start_point = self.mapToScene(event.pos())
+                self.last_point = event.pos()
 
-            if self.current_tool in ['ellipse', 'rectangle']:
+            elif self.current_tool in ['ellipse', 'rectangle']:
                 if self.current_tool == 'ellipse':
                     self.temp_item = QGraphicsEllipseItem(QRectF(self.start_point, self.start_point))
                 elif self.current_tool == 'rectangle':
@@ -204,6 +300,47 @@ class Canvas(QGraphicsView):
                 if self.temp_item:
                     self.temp_item.setBrush(QBrush(self.current_color))
                     self.scene.addItem(self.temp_item)
+
+            elif self.current_tool == 'bezier':
+                self.create_bezier = True
+                self.showHelpBox()
+                pos = self.mapToScene(event.pos())
+
+                control_point = QGraphicsEllipseItem(-5, -5, 10, 10)
+                control_point.setPos(pos)
+                control_point.setBrush(QColor(Qt.GlobalColor.black))
+                control_point.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, enabled=True)
+                self.scene.addItem(control_point)
+                self.bez_nodes.append(control_point)
+
+                handle = QGraphicsEllipseItem(-3, -3, 6, 6)
+                handle.setPos(pos)
+                handle.setBrush(QColor(100,100,100))
+                handle.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, enabled=True)
+                self.scene.addItem(handle)
+                self.bez_handles.append(handle)
+
+                sym_handle = QGraphicsEllipseItem(-3, -3, 6, 6)
+                initial_sym_pos = QPointF(2 * control_point.pos().x() - pos.x(), 2 * control_point.pos().y() - pos.y())
+                sym_handle.setPos(initial_sym_pos)
+                sym_handle.setBrush(QColor(Qt.GlobalColor.green))
+                sym_handle.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, enabled=True)
+                self.scene.addItem(sym_handle)
+                self.bez_sym_handles.append(sym_handle)
+
+                line = QGraphicsLineItem(control_point.pos().x(), control_point.pos().y(), handle.pos().x(),
+                                         handle.pos().y())
+                self.scene.addItem(line)
+                self.bez_lines.append(line)
+
+                sym_line = QGraphicsLineItem(control_point.pos().x(), control_point.pos().y(), sym_handle.pos().x(),
+                                             sym_handle.pos().y())
+                self.scene.addItem(sym_line)
+                self.bez_sym_lines.append(sym_line)
+
+        elif event.button() == Qt.MouseButton.RightButton:
+            self.terminate_bezier()
+            self.endDrawing.emit()
 
     def mouseMoveEvent(self, event):
         if event.buttons() == Qt.MouseButton.LeftButton and self.drawing:
@@ -216,11 +353,29 @@ class Canvas(QGraphicsView):
             elif self.current_tool in ['ellipse', 'rectangle'] and self.temp_item:
                 self.update_temp_shape(end_point)
 
+        elif event.buttons() == Qt.MouseButton.LeftButton and self.create_bezier:
+            super().mouseMoveEvent(event)
+            pos = self.mapToScene(event.pos())
+            if len(self.bez_handles) > 0:
+                self.bez_handles[-1].setPos(pos)
+                self.update_temp_line()
+
+                # Update symmetrical handle
+                if len(self.bez_sym_handles) > 0:
+                    control_point_pos = self.bez_nodes[-1].pos()
+                    new_sym_pos = QPointF(2 * control_point_pos.x() - pos.x(),
+                                          2 * control_point_pos.y() - pos.y())
+                    self.bez_sym_handles[-1].setPos(new_sym_pos)
+                    self.update_temp_sym_line()
+
     def mouseReleaseEvent(self, event):
-        self.endDrawing.emit()
         if event.button() == Qt.MouseButton.LeftButton and self.drawing:
+            self.endDrawing.emit()
             self.drawing = False
             self.temp_item = None  # Reset temporary item
+
+        elif self.create_bezier:
+            self.update_curve()
 
     def update_temp_shape(self, end_point):
         rect = QRectF(self.start_point, end_point).normalized()
@@ -272,10 +427,11 @@ class Canvas(QGraphicsView):
 
     def set_tool(self, tool):
         self.current_tool = tool
-        if tool == 'brush' or 'eraser':
+        if tool == 'brush' or tool == 'eraser':
             self.change_to_brush_cursor()
         else:
-            self.setCursor(Qt.CursorShape.ArrowCursor)
+            print('cross cursor')
+            self.setCursor(Qt.CursorShape.CrossCursor)
 
     def set_color(self):
         color = QColorDialog.getColor()

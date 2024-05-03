@@ -78,6 +78,8 @@ class PaintLCM(QMainWindow):
         ag.setExclusive(True)
         ag.addAction(self.brush_action)
         ag.addAction(self.eraser_action)
+        ag.addAction(self.pencil_action)
+        ag.addAction(self.bezier_action)
 
         self.img_dim = (IMG_W, IMG_H)
         self.canvas = wid.Canvas(self.img_dim)
@@ -179,8 +181,10 @@ class PaintLCM(QMainWindow):
         self.lineEdit_seed.setValidator(validator)
 
         # connections
-        self.brush_action.triggered.connect(lambda: self.canvas.set_tool('brush'))
-        self.eraser_action.triggered.connect(lambda: self.canvas.set_tool('eraser'))
+        self.brush_action.triggered.connect(self.switch_to_brush)
+        self.eraser_action.triggered.connect(self.switch_to_eraser)
+        self.pencil_action.triggered.connect(self.switch_to_pencil)
+        self.bezier_action.triggered.connect(self.switch_to_bezier)
         self.color_action.triggered.connect(self.reset_canvas)
         self.export_action.triggered.connect(self.save_output)
         self.capture_action.triggered.connect(self.toggle_capture)
@@ -248,12 +252,40 @@ class PaintLCM(QMainWindow):
 
         self.add_icon(res.find(f'img/brush{suf}.png'), self.brush_action)
         self.add_icon(res.find(f'img/eraser{suf}.png'), self.eraser_action)
+        self.add_icon(res.find(f'img/pencil{suf}.png'), self.pencil_action)
+        self.add_icon(res.find(f'img/bezier{suf}.png'), self.bezier_action)
         self.add_icon(res.find(f'img/mop{suf}.png'), self.color_action)
         self.add_icon(res.find(f'img/save_as{suf}.png'), self.export_action)
+        self.add_icon(res.find(f'img/hd{suf}.png'), self.exporthd_action)
         self.add_icon(res.find(f'img/crop{suf}.png'), self.capture_action)
+        self.add_icon(res.find(f'img/add{suf}.png'), self.import_action)
 
         # run first inference
         self.update_image()
+
+    # drawing functions _________________________________________
+    def switch_to_pencil(self):
+        self.canvas.terminate_bezier()
+        self.canvas.brush_size = 3
+        self.canvas.brush_cur = self.canvas.create_circle_cursor(3)
+        self.canvas.set_tool('brush')
+
+    def switch_to_bezier(self):
+        self.canvas.set_tool('bezier')
+
+    def switch_to_brush(self):
+        self.canvas.terminate_bezier()
+        self.canvas.brush_size = 10
+        self.canvas.brush_cur = self.canvas.create_circle_cursor(10)
+        self.canvas.set_tool('brush')
+
+    def switch_to_eraser(self):
+        self.canvas.terminate_bezier()
+        self.canvas.brush_size = 20
+        self.canvas.set_tool('eraser')
+        self.canvas.brush_cur = self.canvas.create_circle_cursor(20)
+        self.canvas.change_to_brush_cursor()
+
 
     # general functions __________________________________________
     def toggle_dock_visibility(self):
@@ -261,7 +293,6 @@ class PaintLCM(QMainWindow):
             self.dockWidget_2.hide()
         else:
             self.dockWidget_2.show()
-
 
     def toggle_canvas(self):
         # Hide or show canvas based on checkbox state
