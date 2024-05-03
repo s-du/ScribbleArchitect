@@ -31,7 +31,13 @@ pip3 install torch torchvision torchaudio --index-url https://download.pytorch.o
 ```
  (see https://pytorch.org/get-started/locally/)
 - Install other dependencies (see requirements):
-- Launch main.py
+      - accelerate
+      - diffusers
+      - transformers
+      - PyQT6
+      - opencv-python
+      - peft
+- Launch main.py (the first launch can be long due to the models installation process!)
 
 ## Usage
 Choose a 'type' of architectural design (exterior render, facade elevation, interior render, ...) and a style. On the left zone, paint with a brush and see the proposed image adapting live. If you lack inspiration, or for testing purpose, a example line drawing can be generated automatically.
