@@ -31,12 +31,12 @@ pip3 install torch torchvision torchaudio --index-url https://download.pytorch.o
 ```
  (see https://pytorch.org/get-started/locally/)
 - Install other dependencies (see requirements):
-      - accelerate
-      - diffusers
-      - transformers
-      - PyQT6
-      - opencv-python
-      - peft
+    - accelerate
+    - diffusers
+    - transformers
+    - PyQT6
+    - opencv-python
+    - peft
 - Launch main.py (the first launch can be long due to the models installation process!)
 
 ## Usage
