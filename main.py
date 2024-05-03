@@ -214,11 +214,6 @@ class PaintLCM(QMainWindow):
 
         self.comboBox_style.setIconSize(QSize(desired_icon_width, desired_icon_height))
 
-        # Loop through the flattened lists and add items with icons to the comboBox_style
-        for style, img_path in zip(self.all_ip_styles[0], self.all_ip_paths[0]):
-            icon = QIcon(img_path)
-            self.comboBox_style.addItem(icon, style)
-
         # ----------------------------------------------
 
         # Connect the sliders to the update_image function
@@ -336,7 +331,7 @@ class PaintLCM(QMainWindow):
         )
 
         print('running upscale...')
-        out = lcm.tile_upscale(self.out, 1024)
+        out = lcm.tile_upscale(self.out, self.p, 1024)
 
         # Save the image if a file path was provided, using high-quality settings for JPEG
         if file_path:
@@ -508,7 +503,7 @@ class PaintLCM(QMainWindow):
         cn_strength = self.strength_slider_cn.value() / 100
 
         # get prompts
-        p = self.textEdit.toPlainText()
+        self.p = self.textEdit.toPlainText()
         np = self.textEdit_negative.toPlainText()
 
         # get ip
@@ -522,7 +517,7 @@ class PaintLCM(QMainWindow):
         seed = int(self.lineEdit_seed.text())
 
         print(
-            f'here are the parameters \n steps: {steps}\n cfg: {cfg}\n ipstrength: {ip_strength}\n prompt: {p}')
+            f'here are the parameters \n steps: {steps}\n cfg: {cfg}\n ipstrength: {ip_strength}\n prompt: {self.p}')
 
         print('capturing drawing')
         self.im = scene_to_image(self.canvas)
@@ -538,7 +533,7 @@ class PaintLCM(QMainWindow):
         # capture painted image
         print('running inference')
         self.out = self.infer(
-            prompt=p,
+            prompt=self.p,
             negative_prompt=np,
             image='input.png',
             num_inference_steps=steps,

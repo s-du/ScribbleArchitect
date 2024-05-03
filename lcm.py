@@ -162,7 +162,7 @@ def load_models(model_id="Lykon/dreamshaper-8", use_ip=True):
     return infer
 
 
-def tile_upscale(source_image, res):
+def tile_upscale(source_image, prompt, res):
     from diffusers import ControlNetModel, DiffusionPipeline
     from diffusers.utils import load_image
     def resize_for_condition_image(input_image: Image, resolution: int):
@@ -178,7 +178,7 @@ def tile_upscale(source_image, res):
 
     controlnet = ControlNetModel.from_pretrained('lllyasviel/control_v11f1e_sd15_tile',
                                                  torch_dtype=torch.float16)
-    pipe = DiffusionPipeline.from_pretrained("runwayml/stable-diffusion-v1-5",
+    pipe = DiffusionPipeline.from_pretrained("Lykon/dreamshaper-8",
                                              custom_pipeline="stable_diffusion_controlnet_img2img",
                                              controlnet=controlnet,
                                              torch_dtype=torch.float16,
@@ -186,7 +186,7 @@ def tile_upscale(source_image, res):
 
     condition_image = resize_for_condition_image(source_image, res)
 
-    image = pipe(prompt="best quality",
+    image = pipe(prompt="best quality, "+ prompt,
                  negative_prompt="blur, lowres, bad anatomy, bad hands, cropped, worst quality",
                  image=condition_image,
                  controlnet_conditioning_image=condition_image,
