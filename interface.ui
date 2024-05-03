@@ -58,7 +58,7 @@
      <x>0</x>
      <y>0</y>
      <width>1563</width>
-     <height>20</height>
+     <height>24</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuExport">
@@ -72,7 +72,6 @@
      <string>Options</string>
     </property>
     <addaction name="actionAdvanced_options"/>
-    <addaction name="actionScreen_capture_options"/>
    </widget>
    <addaction name="menuExport"/>
    <addaction name="menuOptions"/>
@@ -200,64 +199,90 @@
    <widget class="QWidget" name="dockWidgetContents_2">
     <layout class="QVBoxLayout" name="verticalLayout_10">
      <item>
-      <widget class="QLabel" name="label_6">
-       <property name="text">
-        <string>Seed</string>
+      <widget class="QTabWidget" name="tabWidget">
+       <property name="currentIndex">
+        <number>0</number>
        </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QLineEdit" name="lineEdit_seed">
-       <property name="text">
-        <string>1234</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QLabel" name="label_4">
-       <property name="text">
-        <string>Prompt</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QTextEdit" name="textEdit">
-       <property name="maximumSize">
-        <size>
-         <width>16777215</width>
-         <height>100</height>
-        </size>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QLabel" name="label_5">
-       <property name="text">
-        <string>Negative prompt</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QTextEdit" name="textEdit_negative">
-       <property name="maximumSize">
-        <size>
-         <width>16777215</width>
-         <height>100</height>
-        </size>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QCheckBox" name="checkBox_sp">
-       <property name="text">
-        <string>Use super simple prompts</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <layout class="QVBoxLayout" name="verticalLayout_5">
-       <item>
-        <layout class="QHBoxLayout" name="horizontalLayout">
+       <widget class="QWidget" name="tab">
+        <attribute name="title">
+         <string>Prompt</string>
+        </attribute>
+        <layout class="QVBoxLayout" name="verticalLayout_11">
+         <item>
+          <widget class="QLabel" name="label_6">
+           <property name="text">
+            <string>Seed</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLineEdit" name="lineEdit_seed">
+           <property name="text">
+            <string>62</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="label_4">
+           <property name="text">
+            <string>Prompt</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QTextEdit" name="textEdit">
+           <property name="maximumSize">
+            <size>
+             <width>16777215</width>
+             <height>100</height>
+            </size>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="label_5">
+           <property name="text">
+            <string>Negative prompt</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QTextEdit" name="textEdit_negative">
+           <property name="maximumSize">
+            <size>
+             <width>16777215</width>
+             <height>100</height>
+            </size>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="checkBox_sp">
+           <property name="text">
+            <string>Use super simple prompts</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="verticalSpacer_4">
+           <property name="orientation">
+            <enum>Qt::Vertical</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>20</width>
+             <height>40</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+        </layout>
+       </widget>
+       <widget class="QWidget" name="tab_3">
+        <attribute name="title">
+         <string>Sliders</string>
+        </attribute>
+        <layout class="QVBoxLayout" name="verticalLayout_13">
          <item>
           <widget class="QLabel" name="label">
            <property name="text">
@@ -268,42 +293,34 @@
            </property>
           </widget>
          </item>
-        </layout>
-       </item>
-       <item>
-        <widget class="QSlider" name="step_slider">
-         <property name="maximumSize">
-          <size>
-           <width>1677215</width>
-           <height>16777215</height>
-          </size>
-         </property>
-         <property name="minimum">
-          <number>4</number>
-         </property>
-         <property name="maximum">
-          <number>15</number>
-         </property>
-         <property name="value">
-          <number>6</number>
-         </property>
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
-         </property>
-         <property name="tickPosition">
-          <enum>QSlider::TicksBelow</enum>
-         </property>
-         <property name="tickInterval">
-          <number>1</number>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </item>
-     <item>
-      <layout class="QVBoxLayout" name="verticalLayout_6">
-       <item>
-        <layout class="QHBoxLayout" name="horizontalLayout_5">
+         <item>
+          <widget class="QSlider" name="step_slider">
+           <property name="maximumSize">
+            <size>
+             <width>1677215</width>
+             <height>16777215</height>
+            </size>
+           </property>
+           <property name="minimum">
+            <number>4</number>
+           </property>
+           <property name="maximum">
+            <number>15</number>
+           </property>
+           <property name="value">
+            <number>6</number>
+           </property>
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="tickPosition">
+            <enum>QSlider::TicksBelow</enum>
+           </property>
+           <property name="tickInterval">
+            <number>1</number>
+           </property>
+          </widget>
+         </item>
          <item>
           <widget class="QLabel" name="label_2">
            <property name="text">
@@ -314,45 +331,37 @@
            </property>
           </widget>
          </item>
-        </layout>
-       </item>
-       <item>
-        <widget class="QSlider" name="cfg_slider">
-         <property name="maximumSize">
-          <size>
-           <width>1677215</width>
-           <height>16777215</height>
-          </size>
-         </property>
-         <property name="minimum">
-          <number>1</number>
-         </property>
-         <property name="maximum">
-          <number>30</number>
-         </property>
-         <property name="singleStep">
-          <number>2</number>
-         </property>
-         <property name="value">
-          <number>15</number>
-         </property>
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
-         </property>
-         <property name="tickPosition">
-          <enum>QSlider::TicksBelow</enum>
-         </property>
-         <property name="tickInterval">
-          <number>2</number>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </item>
-     <item>
-      <layout class="QVBoxLayout" name="verticalLayout_7">
-       <item>
-        <layout class="QHBoxLayout" name="horizontalLayout_2">
+         <item>
+          <widget class="QSlider" name="cfg_slider">
+           <property name="maximumSize">
+            <size>
+             <width>1677215</width>
+             <height>16777215</height>
+            </size>
+           </property>
+           <property name="minimum">
+            <number>1</number>
+           </property>
+           <property name="maximum">
+            <number>30</number>
+           </property>
+           <property name="singleStep">
+            <number>2</number>
+           </property>
+           <property name="value">
+            <number>15</number>
+           </property>
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="tickPosition">
+            <enum>QSlider::TicksBelow</enum>
+           </property>
+           <property name="tickInterval">
+            <number>2</number>
+           </property>
+          </widget>
+         </item>
          <item>
           <widget class="QLabel" name="label_3">
            <property name="text">
@@ -363,61 +372,40 @@
            </property>
           </widget>
          </item>
-        </layout>
-       </item>
-       <item>
-        <widget class="QSlider" name="strength_slider">
-         <property name="maximumSize">
-          <size>
-           <width>16777215</width>
-           <height>16777215</height>
-          </size>
-         </property>
-         <property name="minimum">
-          <number>1</number>
-         </property>
-         <property name="maximum">
-          <number>100</number>
-         </property>
-         <property name="singleStep">
-          <number>5</number>
-         </property>
-         <property name="value">
-          <number>80</number>
-         </property>
-         <property name="sliderPosition">
-          <number>80</number>
-         </property>
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
-         </property>
-         <property name="tickPosition">
-          <enum>QSlider::TicksBelow</enum>
-         </property>
-         <property name="tickInterval">
-          <number>5</number>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <spacer name="verticalSpacer_3">
-         <property name="orientation">
-          <enum>Qt::Vertical</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>20</width>
-           <height>40</height>
-          </size>
-         </property>
-        </spacer>
-       </item>
-      </layout>
-     </item>
-     <item>
-      <layout class="QVBoxLayout" name="verticalLayout_8">
-       <item>
-        <layout class="QHBoxLayout" name="horizontalLayout_3">
+         <item>
+          <widget class="QSlider" name="strength_slider">
+           <property name="maximumSize">
+            <size>
+             <width>16777215</width>
+             <height>16777215</height>
+            </size>
+           </property>
+           <property name="minimum">
+            <number>1</number>
+           </property>
+           <property name="maximum">
+            <number>100</number>
+           </property>
+           <property name="singleStep">
+            <number>5</number>
+           </property>
+           <property name="value">
+            <number>80</number>
+           </property>
+           <property name="sliderPosition">
+            <number>80</number>
+           </property>
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="tickPosition">
+            <enum>QSlider::TicksBelow</enum>
+           </property>
+           <property name="tickInterval">
+            <number>5</number>
+           </property>
+          </widget>
+         </item>
          <item>
           <widget class="QLabel" name="label_10">
            <property name="text">
@@ -428,85 +416,93 @@
            </property>
           </widget>
          </item>
+         <item>
+          <widget class="QSlider" name="strength_slider_cn">
+           <property name="maximumSize">
+            <size>
+             <width>16777215</width>
+             <height>16777215</height>
+            </size>
+           </property>
+           <property name="minimum">
+            <number>1</number>
+           </property>
+           <property name="maximum">
+            <number>100</number>
+           </property>
+           <property name="singleStep">
+            <number>5</number>
+           </property>
+           <property name="value">
+            <number>80</number>
+           </property>
+           <property name="sliderPosition">
+            <number>80</number>
+           </property>
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="tickPosition">
+            <enum>QSlider::TicksBelow</enum>
+           </property>
+           <property name="tickInterval">
+            <number>5</number>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="verticalSpacer_3">
+           <property name="orientation">
+            <enum>Qt::Vertical</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>20</width>
+             <height>40</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
         </layout>
-       </item>
-       <item>
-        <widget class="QSlider" name="strength_slider_cn">
-         <property name="maximumSize">
-          <size>
-           <width>16777215</width>
-           <height>16777215</height>
-          </size>
-         </property>
-         <property name="minimum">
-          <number>1</number>
-         </property>
-         <property name="maximum">
-          <number>100</number>
-         </property>
-         <property name="singleStep">
-          <number>5</number>
-         </property>
-         <property name="value">
-          <number>80</number>
-         </property>
-         <property name="sliderPosition">
-          <number>80</number>
-         </property>
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
-         </property>
-         <property name="tickPosition">
-          <enum>QSlider::TicksBelow</enum>
-         </property>
-         <property name="tickInterval">
-          <number>5</number>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <spacer name="verticalSpacer_4">
-         <property name="orientation">
-          <enum>Qt::Vertical</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>20</width>
-           <height>40</height>
-          </size>
-         </property>
-        </spacer>
-       </item>
-      </layout>
-     </item>
-    </layout>
-   </widget>
-  </widget>
-  <widget class="QDockWidget" name="dockWidget_3">
-   <property name="windowTitle">
-    <string>Screen Capture Options</string>
-   </property>
-   <attribute name="dockWidgetArea">
-    <number>2</number>
-   </attribute>
-   <widget class="QWidget" name="dockWidgetContents_3">
-    <layout class="QVBoxLayout" name="verticalLayout_9">
-     <item>
-      <widget class="QCheckBox" name="checkBox_hide">
-       <property name="text">
-        <string>Hide input zone</string>
-       </property>
+       </widget>
+       <widget class="QWidget" name="tab_2">
+        <attribute name="title">
+         <string>Screen Capture</string>
+        </attribute>
+        <layout class="QVBoxLayout" name="verticalLayout_12">
+         <item>
+          <widget class="QCheckBox" name="checkBox_hide">
+           <property name="text">
+            <string>Hide input zone</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="label_9">
+           <property name="text">
+            <string>Processing type</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QComboBox" name="comboBox_lines"/>
+         </item>
+         <item>
+          <spacer name="verticalSpacer_5">
+           <property name="orientation">
+            <enum>Qt::Vertical</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>20</width>
+             <height>40</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+        </layout>
+       </widget>
       </widget>
-     </item>
-     <item>
-      <widget class="QLabel" name="label_9">
-       <property name="text">
-        <string>Processing type</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QComboBox" name="comboBox_lines"/>
      </item>
     </layout>
    </widget>
@@ -560,11 +556,6 @@
    </property>
    <property name="text">
     <string>Capture Screen</string>
-   </property>
-  </action>
-  <action name="actionScreen_capture_options">
-   <property name="text">
-    <string>Screen Capture Options</string>
    </property>
   </action>
  </widget>

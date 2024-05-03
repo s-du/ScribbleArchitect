@@ -59,7 +59,7 @@ class simpleCanvas(QGraphicsView):
         self.setContentsMargins(0, 0, 0, 0)
         self.setViewportMargins(0, 0, 0, 0)
 
-        self.setRenderHint(QPainter.RenderHint.Antialiasing)
+        self.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
 
     def create_new_scene(self, w, h):
         self.w = w
@@ -83,9 +83,10 @@ class simpleCanvas(QGraphicsView):
             # Get the size of the sceneRect
             targetSize = QSize(self.w, self.h)
 
-            # Scale the pixmap to the new size
+            # Scale the pixmap to the new size with smooth transformation
             scaledPixmap = pixmap.scaled(targetSize,
-                                         Qt.AspectRatioMode.IgnoreAspectRatio)  # Use Qt.IgnoreAspectRatio to change the aspect ratio
+                                         Qt.AspectRatioMode.IgnoreAspectRatio,
+                                         Qt.TransformationMode.SmoothTransformation)
 
             self._photo.setPixmap(scaledPixmap)
 

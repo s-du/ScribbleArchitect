@@ -22,7 +22,7 @@ import os
 import gc
 
 # Params
-IMG_W = 700
+IMG_W = 500
 IMG_H = 500
 CAPTURE_INT = 1000  # milliseconds
 
@@ -234,7 +234,6 @@ class PaintLCM(QMainWindow):
 
         # other actions
         self.actionAdvanced_options.triggered.connect(self.toggle_dock_visibility)
-        self.actionScreen_capture_options.triggered.connect(self.toggle_screen_options)
 
         # seed edit
         self.lineEdit_seed.textChanged.connect(self.update_image)
@@ -263,11 +262,6 @@ class PaintLCM(QMainWindow):
         else:
             self.dockWidget_2.show()
 
-    def toggle_screen_options(self):
-        if self.dockWidget_3.isVisible():
-            self.dockWidget_3.hide()
-        else:
-            self.dockWidget_3.show()
 
     def toggle_canvas(self):
         # Hide or show canvas based on checkbox state
@@ -504,10 +498,10 @@ class PaintLCM(QMainWindow):
             cn_strength=cn_strength
         )
 
-        self.out.save('result.jpg')
+        self.out.save('result.png')
         print('result saved')
 
-        self.result_canvas.setPhoto(pixmap=QPixmap('result.jpg'))
+        self.result_canvas.setPhoto(pixmap=QPixmap('result.png'))
 
 
 def main(argv=None):
@@ -561,7 +555,7 @@ def main(argv=None):
     # create the main window
     print('Launching the application')
     window = PaintLCM(is_dark_theme)
-    window.show()
+    window.showMaximized()
 
     # run the application if necessary
     if (app):

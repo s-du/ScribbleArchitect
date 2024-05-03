@@ -5,3 +5,4 @@ pillow~=10.2.0
 diffusers~=0.27.2
 accelerate
 transformers
+peft
