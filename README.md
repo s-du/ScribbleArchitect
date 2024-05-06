@@ -1,5 +1,7 @@
 ![example](docs/scribble_banner.png)
-Image generation from simple brush strokes, in realtime. The functions have been designed primarily for use in architecture, and for sketching in the early stages of a project. It uses Stable Diffusion and ControlNet as AI backbone for the generative process. IP Adapter support is included, as well as a large library of predefined styles! Each reference image allows to transfer a specific style to your black and white line work.
+Image generation from simple brush strokes, or Bezier curves, in realtime. The functions have been designed primarily for use in architecture, and for sketching in the early stages of a project. It uses Stable Diffusion and ControlNet as AI backbone for the generative process. IP Adapter support is included, as well as a large library of predefined styles! Each reference image allows to transfer a specific style to your black and white line work.
+
+An upscale function was also added, to export results in high resolution. It uses a tile upscaler.
 
 <div style="text-align: center;">
     <img src="docs/anim2.gif" width="800" alt="Description" style="display: block; margin: 0 auto;">
@@ -40,7 +42,7 @@ pip3 install torch torchvision torchaudio --index-url https://download.pytorch.o
 - Launch main.py (the first launch can be long due to the models installation process!)
 
 ## Usage
-Choose a 'type' of architectural design (exterior render, facade elevation, interior render, ...) and a style. On the left zone, paint with a brush and see the proposed image adapting live. If you lack inspiration, or for testing purpose, a example line drawing can be generated automatically.
+Choose a 'type' of architectural design (exterior render, facade elevation, interior render, ...) and a style. On the left zone, paint with a brush and see the proposed image adapting live (a checkbox allows to disable live inference). If you lack inspiration, or for testing purpose, a example line drawing can be generated automatically.
 Mouse wheel to adapt cursor size. 
 
 We added a screen capture function. it creates a capture box (blue border) that can be dragged around. Once happy with the capture, click again on the tool to desactivate it. It allows to work with powerful tools as input (Adobe Illustrator, Inkscape, ...).
@@ -52,7 +54,7 @@ We added a screen capture function. it creates a capture box (blue border) that 
     </p>
 </div>
 
-Of course, the screen capture can be used to grab images!
+Of course, the screen capture can be used to grab images! Once the capture is finished (click again on the tool), some processing options are accessible through a dedicated combobox (ex. canny edges or Sobel pre-processing).
 
 <div style="text-align: center;">
     <img src="docs/anim6.gif" width="800" alt="Description" style="display: block; margin: 0 auto;">
@@ -62,7 +64,7 @@ Of course, the screen capture can be used to grab images!
 </div>
 
 ## Options
-The SD model can be adapted in the lcm.py file. Live drawing requires a strong GPU, I would advice to reduce image size (in main.py) if too laggy!
+The SD model can be adapted in the lcm.py file. Live drawing requires a strong GPU, I would advice to reduce image size (in main.py) if too laggy! Image upscale is really GPU intensive...
 
 # Included models
 By default, the app uses Dreamshaper (https://huggingface.co/Lykon/dreamshaper-8)
