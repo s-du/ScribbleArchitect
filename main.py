@@ -88,6 +88,12 @@ class PaintLCM(QMainWindow):
         self.result_canvas = wid.simpleCanvas(self.img_dim)
         self.horizontalLayout_4.addWidget(self.result_canvas)
 
+        # status bar
+        # Create and set status bar
+        self.status_bar = QStatusBar()
+        self.setStatusBar(self.status_bar)
+        self.status_bar.showMessage("Full Toolbar")
+
         # loads models
         self.models = model_list
         self.models_ids = model_ids
@@ -97,6 +103,8 @@ class PaintLCM(QMainWindow):
         self.im = None
         self.original_parent = None
         self.gray_image = None
+        self.actions_visible = True
+        self.initialization = True
 
         # add capture box
         self.box = wid.TransparentBox(self.img_dim)
@@ -225,7 +233,6 @@ class PaintLCM(QMainWindow):
         # Connect the text edit to the update_image function
         self.textEdit.setWordWrapMode(QTextOption.WrapMode.WordWrap)
         self.textEdit.setText(self.all_ip_prompts[0][0])
-
         self.textEdit_negative.setWordWrapMode(QTextOption.WrapMode.WordWrap)
 
         # checkboxes
@@ -238,7 +245,20 @@ class PaintLCM(QMainWindow):
         # seed edit
         self.lineEdit_seed.textChanged.connect(self.update_image)
 
-        # drawing ends
+        # toggle actions
+        # add actions to complex toolbars
+
+        self.toggleable_actions = [self.bezier_action,
+                                   self.capture_action,
+                                   self.export_action,
+                                   self.exporthd_action,
+                                   self.import_action]
+
+        # Create a snapshot of the toolbar with positions
+        self.original_toolbar_state = [(action, self.toolBar.actions().index(action)) for action in
+                                       self.toolBar.actions() if action in self.toggleable_actions]
+
+        self.toggle_action.triggered.connect(self.toggle_tools)
 
         if is_dark_theme:
             suf = '_white_tint'
@@ -255,8 +275,10 @@ class PaintLCM(QMainWindow):
         self.add_icon(res.find(f'img/hd{suf}.png'), self.exporthd_action)
         self.add_icon(res.find(f'img/crop{suf}.png'), self.capture_action)
         self.add_icon(res.find(f'img/add{suf}.png'), self.import_action)
+        self.add_icon(res.find(f'img/switch{suf}.png'), self.toggle_action)
 
         # run first inference
+        self.initialization = False
         self.update_image()
 
     # drawing functions _________________________________________
@@ -284,6 +306,30 @@ class PaintLCM(QMainWindow):
 
 
     # general functions __________________________________________
+
+    def snapshot_toolbar(self):
+        """ Capture the current state of the toolbar. """
+        return self.toolBar.actions()
+
+    def toggle_tools(self):
+        """Toggle the visibility of selected actions, preserving their order."""
+        if self.actions_visible:
+            for action, position in self.original_toolbar_state:
+                self.toolBar.removeAction(action)
+            self.actions_visible = False
+            self.toggle_action.setText("Expand toolset")
+            self.status_bar.showMessage("Reduced Toolbar")
+        else:
+            # Restore each action at its original position
+            for action, position in sorted(self.original_toolbar_state, key=lambda x: x[1]):
+                before_action = self.toolBar.actions()[position] if len(self.toolBar.actions()) > position else None
+                self.toolBar.insertAction(before_action, action)
+            self.actions_visible = True
+            self.toggle_action.setText("Reduce toolset")
+            self.status_bar.showMessage("Full Toolbar")
+
+        self.toggle_dock_visibility()
+
     def toggle_dock_visibility(self):
         if self.dockWidget_2.isVisible():
             self.dockWidget_2.hide()
@@ -403,6 +449,7 @@ class PaintLCM(QMainWindow):
 
         # Should it update continuously
         if self.checkBox.isChecked():
+            print('update from screen capture')
             self.update_image()
 
     def reprocess_capture(self, option):
@@ -479,6 +526,7 @@ class PaintLCM(QMainWindow):
                 self.comboBox_style.addItem(icon, style)
 
         self.textEdit.setText(self.all_ip_prompts[idx][0])
+        print('update from change of predefined prompt')
         self.update_image()
 
     def change_style(self):
@@ -488,67 +536,70 @@ class PaintLCM(QMainWindow):
             self.textEdit.setText(self.simple_prompts[idx])
         else:
             self.textEdit.setText(self.all_ip_prompts[idx][idx2])
+
+        print('update from change of style')
         self.update_image()
 
     def update_brush_stroke(self):
         if self.checkBox.isChecked():
+            print('update from brush stroke')
             self.update_image()
 
     def update_image(self):
-        # gather slider parameters:
-        steps = self.step_slider.value()
-        cfg = self.cfg_slider.value() / 10
+        if not self.initialization:
+            # gather slider parameters:
+            steps = self.step_slider.value()
+            cfg = self.cfg_slider.value() / 10
 
-        ip_strength = self.strength_slider.value() / 100
-        cn_strength = self.strength_slider_cn.value() / 100
+            ip_strength = self.strength_slider.value() / 100
+            cn_strength = self.strength_slider_cn.value() / 100
 
-        # get prompts
-        self.p = self.textEdit.toPlainText()
-        np = self.textEdit_negative.toPlainText()
+            # get prompts
+            self.p = self.textEdit.toPlainText()
+            np = self.textEdit_negative.toPlainText()
 
-        # get ip
-        idx = self.comboBox.currentIndex()
-        ip_list = self.all_ip_paths[idx]
+            # get ip
+            idx = self.comboBox.currentIndex()
+            ip_list = self.all_ip_paths[idx]
 
-        idx2 = self.comboBox_style.currentIndex()
-        ip_img_ref = ip_list[idx2]
+            idx2 = self.comboBox_style.currentIndex()
+            ip_img_ref = ip_list[idx2]
 
-        # get seed
-        seed = int(self.lineEdit_seed.text())
+            # get seed
+            seed = int(self.lineEdit_seed.text())
 
-        print(
-            f'here are the parameters \n steps: {steps}\n cfg: {cfg}\n ipstrength: {ip_strength}\n prompt: {self.p}')
+            print(
+                f'here are the parameters \n steps: {steps}\n cfg: {cfg}\n ipstrength: {ip_strength}\n prompt: {self.p}')
 
-        print('capturing drawing')
-        self.im = scene_to_image(self.canvas)
+            print('capturing drawing')
+            self.im = scene_to_image(self.canvas)
 
-        # Check if image dimensions are 512x512
-        if self.im.size != (IMG_W, IMG_H):
-            print("Image dimensions are not good. Upscaling...")
-            # Upscale the image to fit needed dimensions
-            self.im = self.im.resize((IMG_W, IMG_H), Image.BICUBIC)
+            # Check if image dimensions are 512x512
+            if self.im.size != (IMG_W, IMG_H):
+                print("Image dimensions are not good. Upscaling...")
+                # Upscale the image to fit needed dimensions
+                self.im = self.im.resize((IMG_W, IMG_H), Image.BICUBIC)
 
-        self.im.save('input.png')
+            self.im.save('input.png')
 
-        # capture painted image
-        print('running inference')
-        self.out = self.infer(
-            prompt=self.p,
-            negative_prompt=np,
-            image='input.png',
-            num_inference_steps=steps,
-            guidance_scale=cfg,
-            seed=seed,
-            ip_scale=ip_strength,
-            ip_image_to_use=ip_img_ref,
-            cn_strength=cn_strength
-        )
+            # capture painted image
+            print('running inference')
+            self.out = self.infer(
+                prompt=self.p,
+                negative_prompt=np,
+                image='input.png',
+                num_inference_steps=steps,
+                guidance_scale=cfg,
+                seed=seed,
+                ip_scale=ip_strength,
+                ip_image_to_use=ip_img_ref,
+                cn_strength=cn_strength
+            )
 
-        self.out.save('result.png')
-        print('result saved')
+            self.out.save('result.png')
+            print('result saved')
 
-        self.result_canvas.setPhoto(pixmap=QPixmap('result.png'))
-
+            self.result_canvas.setPhoto(pixmap=QPixmap('result.png'))
 
 def main(argv=None):
     """

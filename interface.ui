@@ -63,9 +63,11 @@
    </property>
    <widget class="QMenu" name="menuExport">
     <property name="title">
-     <string>Export</string>
+     <string>File</string>
     </property>
+    <addaction name="import_action"/>
     <addaction name="export_action"/>
+    <addaction name="exporthd_action"/>
    </widget>
    <widget class="QMenu" name="menuOptions">
     <property name="title">
@@ -96,6 +98,8 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
+   <addaction name="toggle_action"/>
+   <addaction name="separator"/>
    <addaction name="pencil_action"/>
    <addaction name="brush_action"/>
    <addaction name="bezier_action"/>
@@ -107,7 +111,6 @@
    <addaction name="separator"/>
    <addaction name="export_action"/>
    <addaction name="exporthd_action"/>
-   <addaction name="separator"/>
   </widget>
   <widget class="QDockWidget" name="dockWidget">
    <property name="floating">
@@ -589,6 +592,14 @@
   <action name="exporthd_action">
    <property name="text">
     <string>Export (HD)</string>
+   </property>
+  </action>
+  <action name="toggle_action">
+   <property name="text">
+    <string>Simple Toolset</string>
+   </property>
+   <property name="toolTip">
+    <string>Switch simple/full toolset</string>
    </property>
   </action>
  </widget>
