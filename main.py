@@ -329,12 +329,19 @@ class PaintLCM(QMainWindow):
             self.status_bar.showMessage("Full Toolbar")
 
         self.toggle_dock_visibility()
+        # self.toggle_push_buttons()
 
     def toggle_dock_visibility(self):
         if self.dockWidget_2.isVisible():
             self.dockWidget_2.hide()
         else:
             self.dockWidget_2.show()
+
+    def toggle_push_buttons(self):
+        if self.pushButton_example.isVisible():
+            self.pushButton_example.hide()
+        else:
+            self.pushButton_example.show()
 
     def toggle_canvas(self):
         # Hide or show canvas based on checkbox state
