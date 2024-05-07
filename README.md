@@ -1,7 +1,8 @@
 ![example](docs/scribble_banner.png)
-Image generation from simple brush strokes, or Bezier curves, in realtime. The functions have been designed primarily for use in architecture, and for sketching in the early stages of a project. It uses Stable Diffusion and ControlNet as AI backbone for the generative process. IP Adapter support is included, as well as a large library of predefined styles! Each reference image allows to transfer a specific style to your black and white line work.
 
-An upscale function was also added, to export results in high resolution. It uses a tile upscaler.
+>**Line drawing, style transfer and upscale with Stable Diffusion!**
+
+This GUI allows generating images from simple brush strokes, or Bezier curves, in realtime. The functions have been designed primarily for use in architecture, and for sketching in the early stages of a project. It uses Stable Diffusion and ControlNet as AI backbone for the generative process. IP Adapter support is included, as well as a large library of predefined styles! Each reference image allows to transfer a specific style to your black and white line work. An upscale function was also added, to export results in high resolution. It uses a ControlNet upscaler.
 
 <div style="text-align: center;">
     <img src="docs/anim2.gif" width="800" alt="Description" style="display: block; margin: 0 auto;">
@@ -63,10 +64,26 @@ Of course, the screen capture can be used to grab images! Once the capture is fi
     </p>
 </div>
 
+## Upscaling
+The render can be exported in high resolution, thanks to a ControlNet upscaler. More options will be integrated soon!
+<div style="text-align: center;">
+    <img src="docs/anim7.gif" width="800" alt="Description" style="display: block; margin: 0 auto;">
+    <p>
+    <i style="display: block; margin-top: 5px;">Upscaling (artistic exterior render) </i>
+    </p>
+</div>
+
+<div style="text-align: center;">
+    <img src="docs/anim9.gif" width="800" alt="Description" style="display: block; margin: 0 auto;">
+    <p>
+    <i style="display: block; margin-top: 5px;">Upscaling (realistic interior render) </i>
+    </p>
+</div>
+
 ## Options
 The SD model can be adapted in the lcm.py file. Live drawing requires a strong GPU, I would advice to reduce image size (in main.py) if too laggy! Image upscale is really GPU intensive...
 
-# Included models
+## Included models
 By default, the app uses Dreamshaper (https://huggingface.co/Lykon/dreamshaper-8)
 
 ![compil](docs/s_archi_compil.png)
