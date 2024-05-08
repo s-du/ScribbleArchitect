@@ -1,4 +1,4 @@
-![example](docs/scribble_banner.png)
+![example](docs/scribble_banner2.png)
 
 >**Line drawing, style transfer and upscale with Stable Diffusion!**
 
