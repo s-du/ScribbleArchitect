@@ -1,5 +1,6 @@
 torch~=2.2.2+cu118
 opencv-python~=4.9.0.80
+opencv-contrib-python
 PyQt6~=6.6.1
 pillow~=10.2.0
 diffusers~=0.27.2
