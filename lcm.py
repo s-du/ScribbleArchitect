@@ -9,6 +9,7 @@ import cv2
 import resources as res
 import torch
 from PIL import Image
+import numpy as np
 
 
 """
@@ -26,13 +27,14 @@ model_list = ['Dreamshaper7', 'SD 1.5','Dreamshaper8','AbsoluteReality', 'RevAni
 model_ids = [ "Lykon/dreamshaper-7", "runwayml/stable-diffusion-v1-5", "Lykon/dreamshaper-8","Lykon/absolute-reality-1.81", "danbrown/RevAnimated-v1-2-2", "darkstorm2150/Protogen_x5.8_Official_Release", "stabilityai/stable-diffusion-xl-base-1.0"]
 
 
-def screen_to_lines(gray_image,option):
+def screen_to_lines(image,option):
+    gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     if option == 0:
-        gray_image = cv2.bilateralFilter(gray_image, 5, 75, 75)
+        gray_image_bil = cv2.bilateralFilter(gray_image, 5, 75, 75)
 
         # Apply Sobel edge detection
-        sobelx = cv2.Sobel(gray_image, cv2.CV_64F, 1, 0, ksize=3)
-        sobely = cv2.Sobel(gray_image, cv2.CV_64F, 0, 1, ksize=3)
+        sobelx = cv2.Sobel(gray_image_bil, cv2.CV_64F, 1, 0, ksize=3)
+        sobely = cv2.Sobel(gray_image_bil, cv2.CV_64F, 0, 1, ksize=3)
         sobel_image = cv2.sqrt(cv2.addWeighted(cv2.pow(sobelx, 2), 0.5, cv2.pow(sobely, 2), 0.5, 0))
 
         # Normalize and convert to 8-bit format
@@ -42,12 +44,79 @@ def screen_to_lines(gray_image,option):
         processed_image = 255 - sobel_image
 
     elif option == 1:
+        # Apply a bilateral filter
+        gray_image_bil = cv2.bilateralFilter(gray_image, 5, 75, 75)
+
+        # Apply Sobel edge detection
+        sobelx = cv2.Sobel(gray_image_bil, cv2.CV_64F, 1, 0, ksize=3)
+        sobely = cv2.Sobel(gray_image_bil, cv2.CV_64F, 0, 1, ksize=3)
+        sobel_magnitude = cv2.sqrt(cv2.addWeighted(cv2.pow(sobelx, 2), 0.5, cv2.pow(sobely, 2), 0.5, 0))
+
+        # Normalize and convert to 8-bit format
+        sobel_image = cv2.convertScaleAbs(sobel_magnitude)
+
+        # Invert the Sobel image to use dark areas as thicker lines
+        processed_image = 255 - sobel_image
+
+        # Threshold to create binary image
+        _, binary_image = cv2.threshold(processed_image, 200, 255, cv2.THRESH_BINARY)
+
+        # Optional: Use dilation to thicken the darker lines
+        kernel = np.ones((2, 2), np.uint8)
+        binary_image = cv2.dilate(binary_image, kernel, iterations=1)
+
+        processed_image=binary_image
+
+
+    elif option == 2:
         edges = cv2.Canny(gray_image, 100, 200)
 
         # Invert the Sobel image
         processed_image = 255 - edges
 
-    elif option == 2:
+    elif option == 3:
+        edges = cv2.Canny(gray_image, 100, 200, L2gradient=True)
+
+        # Invert the Sobel image
+        processed_image = 255 - edges
+
+    elif option == 4:
+        gray_image_bil = cv2.bilateralFilter(gray_image, 5, 75, 75)
+        edges = cv2.Canny(gray_image_bil, 100, 200)
+
+        # Invert the Sobel image
+        processed_image = 255 - edges
+
+    elif option == 5:
+        blur = cv2.GaussianBlur(gray_image, (5, 5), 0)
+        edges = cv2.Canny(blur, 50, 200)
+
+        # Invert the Sobel image
+        processed_image = 255 - edges
+
+    elif option == 6 or option == 7:
+        edge_detector = cv2.ximgproc.createStructuredEdgeDetection('models/edge_model.yml')
+        # detect the edges
+        print(image.dtype, image.shape)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        image = image.astype(np.float32) / 255.0
+        edges = edge_detector.detectEdges(image)
+
+        # Invert the Sobel image
+        u_im = np.uint8(255 * edges)
+        processed_image = 255 - u_im
+
+        if option == 7:
+            # Threshold to create binary image
+            _, binary_image = cv2.threshold(processed_image, 200, 255, cv2.THRESH_BINARY)
+
+            # Optional: Use dilation to thicken the darker lines
+            kernel = np.ones((2, 2), np.uint8)
+            binary_image = cv2.dilate(binary_image, kernel, iterations=1)
+
+            processed_image = binary_image
+
+    elif option == 8:
         processed_image = gray_image
 
 

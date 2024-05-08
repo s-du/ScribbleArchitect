@@ -23,7 +23,7 @@ import gc
 
 # Params
 BASE_DIR = res.find('img/AI_ref_images_bo')
-LINE_METHODS = ['Method 1: Sobel + BIL', 'Method 2: Canny + BIL', 'Method 3: Gray image']
+LINE_METHODS = ['Sobel + BIL', 'Sobel Custom', 'Canny', 'Canny + L2', 'Canny + BIL', 'Canny + Blur', 'Random Forests', 'RF Custom',  'No processing']
 IMG_W = 500
 IMG_H = 500
 CAPTURE_INT = 1000  # milliseconds
@@ -105,6 +105,7 @@ class PaintLCM(QMainWindow):
         self.im = None
         self.original_parent = None
         self.gray_image = None
+        self.resized_image = None
         self.actions_visible = True
         self.initialization = True
 
@@ -417,8 +418,7 @@ class PaintLCM(QMainWindow):
     def import_image(self):
         # file selection dialog
         file_name, _ = QFileDialog.getOpenFileName(self, "Select Image File", "",
-                                                   "Image Files (*.png *.jpg *.jpeg *.bmp *.gif)",
-                                                   options=QFileDialog.Option.DontUseNativeDialog)
+                                                   "Image Files (*.png *.jpg *.jpeg *.bmp *.gif)")
         if file_name:
             # resize image to maximum dimension
             image = cv2.imread(file_name)
@@ -442,10 +442,10 @@ class PaintLCM(QMainWindow):
             self.box = wid.TransparentBox(self.img_dim)
 
             # convert to grayscale
-            self.gray_image = cv2.cvtColor(resized_image, cv2.COLOR_BGR2GRAY)
+            self.resized_image = resized_image
 
             # line operation
-            processed_image = lcm.screen_to_lines(self.gray_image, self.line_mode)
+            processed_image = lcm.screen_to_lines(self.resized_image, self.line_mode)
 
             # Convert the inverted image back to QPixmap
             final_pixmap = self.convertMatToQPixmap(processed_image)
@@ -494,10 +494,10 @@ class PaintLCM(QMainWindow):
             temp_image = self.convertQImageToMat(qimage)
 
             # Convert to grayscale
-            self.gray_image = cv2.cvtColor(temp_image, cv2.COLOR_BGR2GRAY)
+            self.resized_image = temp_image
 
             # convert to edge image
-            processed_image = lcm.screen_to_lines(self.gray_image, self.line_mode)
+            processed_image = lcm.screen_to_lines(temp_image, self.line_mode)
 
             # Convert the inverted image back to QPixmap
             final_pixmap = self.convertMatToQPixmap(processed_image)
@@ -511,7 +511,7 @@ class PaintLCM(QMainWindow):
             self.update_image()
 
     def reprocess_capture(self, option):
-        processed_image = lcm.screen_to_lines(self.gray_image, option)
+        processed_image = lcm.screen_to_lines(self.resized_image, option)
 
         # Convert the inverted image back to QPixmap
         final_pixmap = self.convertMatToQPixmap(processed_image)
@@ -523,7 +523,7 @@ class PaintLCM(QMainWindow):
     def change_capture_option(self):
         idx = self.comboBox_lines.currentIndex()
         self.line_mode = idx
-        if self.gray_image is not None:
+        if self.resized_image is not None:
             self.reprocess_capture(idx)
 
     def convertQImageToMat(self, incomingImage):
