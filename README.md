@@ -39,6 +39,7 @@ pip3 install torch torchvision torchaudio --index-url https://download.pytorch.o
     - transformers
     - PyQT6
     - opencv-python
+    - opencv-contrib-python
     - peft
 - Launch main.py (the first launch can be long due to the models installation process!)
 
