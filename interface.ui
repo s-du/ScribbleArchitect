@@ -271,6 +271,13 @@
           </widget>
          </item>
          <item>
+          <widget class="QCheckBox" name="checkBox_keep_p">
+           <property name="text">
+            <string>Keep prompt</string>
+           </property>
+          </widget>
+         </item>
+         <item>
           <spacer name="verticalSpacer_4">
            <property name="orientation">
             <enum>Qt::Vertical</enum>

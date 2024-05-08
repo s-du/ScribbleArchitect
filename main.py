@@ -22,6 +22,8 @@ import os
 import gc
 
 # Params
+BASE_DIR = res.find('img/AI_ref_images_bo')
+LINE_METHODS = ['Method 1: Sobel + BIL', 'Method 2: Canny + BIL', 'Method 3: Gray image']
 IMG_W = 500
 IMG_H = 500
 CAPTURE_INT = 1000  # milliseconds
@@ -73,7 +75,7 @@ class PaintLCM(QMainWindow):
 
         self.setWindowTitle("ScribbleArchitect!")
 
-        # add actions to action group
+        # add actions to action group (mutually exculive)
         ag = QActionGroup(self)
         ag.setExclusive(True)
         ag.addAction(self.brush_action)
@@ -106,11 +108,12 @@ class PaintLCM(QMainWindow):
         self.actions_visible = True
         self.initialization = True
 
+        self.line_mode = 0
+
         # add capture box
         self.box = wid.TransparentBox(self.img_dim)
         self.capture_interval = CAPTURE_INT
         self.timer = QTimer(self)
-        self.timer.timeout.connect(self.captureScreen)
 
         # pre-img parameters
         self.simple_prompts = ['A building architectural render',
@@ -138,8 +141,7 @@ class PaintLCM(QMainWindow):
                               res.find('img/examples/facade_default.png')
                               ]
 
-        # base_dir = res.find('img/AI_ref_images')
-        base_dir = res.find('img/AI_ref_images_bo')
+        base_dir = BASE_DIR
         self.type_names = []  # To store the type names as read from folder names
         self.all_ip_styles = []  # To store style names
         self.all_ip_prompts = []  # To store corresponding prompts
@@ -188,32 +190,8 @@ class PaintLCM(QMainWindow):
         # Apply the validator to the line edit
         self.lineEdit_seed.setValidator(validator)
 
-        # connections
-        self.brush_action.triggered.connect(self.switch_to_brush)
-        self.eraser_action.triggered.connect(self.switch_to_eraser)
-        self.pencil_action.triggered.connect(self.switch_to_pencil)
-        self.bezier_action.triggered.connect(self.switch_to_bezier)
-        self.color_action.triggered.connect(self.reset_canvas)
-        self.export_action.triggered.connect(self.save_output)
-        self.exporthd_action.triggered.connect(self.save_output_hd)
-        self.capture_action.triggered.connect(self.toggle_capture)
-
-        # self.actionLoad_IP_Adapter_reference_image.triggered.connect(self.define_ip_ref)
-        self.pushButton.clicked.connect(self.update_image)
-        self.pushButton_example.clicked.connect(self.import_example)
-
-        # self.checkBox_ip.stateChanged.connect(self.toggle_ip)
-
-        # when editing canvas --> update inference
-        self.canvas.endDrawing.connect(self.update_brush_stroke)
-
-        # combobox ---------------------------------------
-        self.comboBox.currentIndexChanged.connect(self.change_predefined_prompts)
-        self.comboBox_style.currentIndexChanged.connect(self.change_style)
-        self.comboBox_lines.currentIndexChanged.connect(self.change_capture_option)
-
-        self.comboBox_lines.addItems(['Method 1', 'Method 2', 'Method 3'])
-
+        # comboboxes ---------------------------------------
+        self.comboBox_lines.addItems(LINE_METHODS)
         self.comboBox.addItems([f'Type {i + 1} ({name})' for i, name in enumerate(self.type_names)])
 
         # After initializing the comboBox and adding items with icons, set the icon size
@@ -223,31 +201,13 @@ class PaintLCM(QMainWindow):
         self.comboBox_style.setIconSize(QSize(desired_icon_width, desired_icon_height))
 
         # ----------------------------------------------
-
-        # Connect the sliders to the update_image function
-        self.step_slider.valueChanged.connect(self.update_image)
-        self.cfg_slider.valueChanged.connect(self.update_image)
-        self.strength_slider.valueChanged.connect(self.update_image)
-        self.strength_slider_cn.valueChanged.connect(self.update_image)
-
-        # Connect the text edit to the update_image function
+        # Set textedits
         self.textEdit.setWordWrapMode(QTextOption.WrapMode.WordWrap)
         self.textEdit.setText(self.all_ip_prompts[0][0])
         self.textEdit_negative.setWordWrapMode(QTextOption.WrapMode.WordWrap)
 
-        # checkboxes
-        self.checkBox_sp.stateChanged.connect(self.change_style)
-        self.checkBox_hide.stateChanged.connect(self.toggle_canvas)
-
-        # other actions
-        self.actionAdvanced_options.triggered.connect(self.toggle_dock_visibility)
-
-        # seed edit
-        self.lineEdit_seed.textChanged.connect(self.update_image)
-
         # toggle actions
         # add actions to complex toolbars
-
         self.toggleable_actions = [self.bezier_action,
                                    self.capture_action,
                                    self.export_action,
@@ -257,8 +217,6 @@ class PaintLCM(QMainWindow):
         # Create a snapshot of the toolbar with positions
         self.original_toolbar_state = [(action, self.toolBar.actions().index(action)) for action in
                                        self.toolBar.actions() if action in self.toggleable_actions]
-
-        self.toggle_action.triggered.connect(self.toggle_tools)
 
         if is_dark_theme:
             suf = '_white_tint'
@@ -277,9 +235,61 @@ class PaintLCM(QMainWindow):
         self.add_icon(res.find(f'img/add{suf}.png'), self.import_action)
         self.add_icon(res.find(f'img/switch{suf}.png'), self.toggle_action)
 
+        # create connections
+        self.create_connections()
+
+        self.change_predefined_prompts()
+
         # run first inference
         self.initialization = False
         self.update_image()
+
+    # signals and connections ___________________________________
+    def create_connections(self):
+        # timer
+        self.timer.timeout.connect(self.captureScreen)
+
+        # actions
+        self.brush_action.triggered.connect(self.switch_to_brush)
+        self.eraser_action.triggered.connect(self.switch_to_eraser)
+        self.pencil_action.triggered.connect(self.switch_to_pencil)
+        self.bezier_action.triggered.connect(self.switch_to_bezier)
+        self.color_action.triggered.connect(self.reset_canvas)
+        self.import_action.triggered.connect(self.import_image)
+        self.export_action.triggered.connect(self.save_output)
+        self.exporthd_action.triggered.connect(self.save_output_hd)
+        self.capture_action.triggered.connect(self.toggle_capture)
+
+        # pushbuttons
+        # self.actionLoad_IP_Adapter_reference_image.triggered.connect(self.define_ip_ref)
+        self.pushButton.clicked.connect(self.update_image)
+        self.pushButton_example.clicked.connect(self.import_example)
+
+        # when editing canvas --> update inference
+        self.canvas.endDrawing.connect(self.update_brush_stroke)
+
+        # comboboxes
+        self.comboBox.currentIndexChanged.connect(self.change_predefined_prompts)
+        self.comboBox_style.currentIndexChanged.connect(self.change_style)
+        self.comboBox_lines.currentIndexChanged.connect(self.change_capture_option)
+
+        # sliders
+        self.step_slider.valueChanged.connect(self.update_image)
+        self.cfg_slider.valueChanged.connect(self.update_image)
+        self.strength_slider.valueChanged.connect(self.update_image)
+        self.strength_slider_cn.valueChanged.connect(self.update_image)
+
+        # checkboxes
+        self.checkBox_sp.stateChanged.connect(self.change_style)
+        self.checkBox_hide.stateChanged.connect(self.toggle_canvas)
+
+        # other actions
+        self.actionAdvanced_options.triggered.connect(self.toggle_dock_visibility)
+
+        # seed edit
+        self.lineEdit_seed.textChanged.connect(self.update_image)
+
+        self.toggle_action.triggered.connect(self.toggle_tools)
 
     # drawing functions _________________________________________
     def switch_to_pencil(self):
@@ -303,7 +313,6 @@ class PaintLCM(QMainWindow):
         self.canvas.set_tool('eraser')
         self.canvas.brush_cur = self.canvas.create_circle_cursor(20)
         self.canvas.change_to_brush_cursor()
-
 
     # general functions __________________________________________
 
@@ -395,16 +404,57 @@ class PaintLCM(QMainWindow):
 
         print(f'result saved: {file_path}')
 
-
     def import_example(self):
         idx = self.comboBox.currentIndex()
         img_path = self.example_paths[idx]
         pixmap = QPixmap(img_path)
-        pixmap = pixmap.scaled(IMG_W, IMG_H, Qt.AspectRatioMode.KeepAspectRatio,
+        pixmap = pixmap.scaled(self.img_dim[0], self.img_dim[1], Qt.AspectRatioMode.KeepAspectRatio,
                                Qt.TransformationMode.SmoothTransformation)
 
         self.canvas.clean_scene()
         self.canvas.setPhoto(pixmap)
+
+    def import_image(self):
+        # file selection dialog
+        file_name, _ = QFileDialog.getOpenFileName(self, "Select Image File", "",
+                                                   "Image Files (*.png *.jpg *.jpeg *.bmp *.gif)",
+                                                   options=QFileDialog.Option.DontUseNativeDialog)
+        if file_name:
+            # resize image to maximum dimension
+            image = cv2.imread(file_name)
+            max_dimension = max(self.img_dim[0], self.img_dim[1])
+            height, width = image.shape[:2]
+            scaling_factor = max_dimension / max(height, width)
+            if scaling_factor < 1:
+                new_size = (int(width * scaling_factor), int(height * scaling_factor))
+                resized_image = cv2.resize(image, new_size, interpolation=cv2.INTER_AREA)
+            else:
+                resized_image = image
+
+            # compile new size parameters
+
+            self.img_dim = (int(width * scaling_factor), int(height * scaling_factor))
+
+            self.result_canvas.create_new_scene(self.img_dim[0], self.img_dim[1])
+            self.canvas.create_new_scene(self.img_dim[0], self.img_dim[1])
+
+            # update capture window
+            self.box = wid.TransparentBox(self.img_dim)
+
+            # convert to grayscale
+            self.gray_image = cv2.cvtColor(resized_image, cv2.COLOR_BGR2GRAY)
+
+            # line operation
+            processed_image = lcm.screen_to_lines(self.gray_image, self.line_mode)
+
+            # Convert the inverted image back to QPixmap
+            final_pixmap = self.convertMatToQPixmap(processed_image)
+
+            # save pixmap in drawing zone
+            self.canvas.setPhoto(final_pixmap)
+
+            # update render
+            self.update_image()
 
     # Screen capture __________________________________________
     def toggle_capture(self):
@@ -446,7 +496,8 @@ class PaintLCM(QMainWindow):
             # Convert to grayscale
             self.gray_image = cv2.cvtColor(temp_image, cv2.COLOR_BGR2GRAY)
 
-            processed_image = lcm.screen_to_lines(self.gray_image, 0)
+            # convert to edge image
+            processed_image = lcm.screen_to_lines(self.gray_image, self.line_mode)
 
             # Convert the inverted image back to QPixmap
             final_pixmap = self.convertMatToQPixmap(processed_image)
@@ -471,6 +522,7 @@ class PaintLCM(QMainWindow):
 
     def change_capture_option(self):
         idx = self.comboBox_lines.currentIndex()
+        self.line_mode = idx
         if self.gray_image is not None:
             self.reprocess_capture(idx)
 
@@ -531,18 +583,20 @@ class PaintLCM(QMainWindow):
             for style, img_path in zip(self.all_ip_styles[idx], self.all_ip_paths[idx]):
                 icon = QIcon(img_path)
                 self.comboBox_style.addItem(icon, style)
-
-        self.textEdit.setText(self.all_ip_prompts[idx][0])
-        print('update from change of predefined prompt')
+        if not self.checkBox_keep_p.isChecked():
+            self.textEdit.setText(self.all_ip_prompts[idx][0])
+            print('update from change of predefined prompt')
         self.update_image()
 
     def change_style(self):
         idx = self.comboBox.currentIndex()
         idx2 = self.comboBox_style.currentIndex()
-        if self.checkBox_sp.isChecked():
-            self.textEdit.setText(self.simple_prompts[idx])
-        else:
-            self.textEdit.setText(self.all_ip_prompts[idx][idx2])
+
+        if not self.checkBox_keep_p.isChecked():
+            if self.checkBox_sp.isChecked():
+                self.textEdit.setText(self.simple_prompts[idx])
+            else:
+                self.textEdit.setText(self.all_ip_prompts[idx][idx2])
 
         print('update from change of style')
         self.update_image()
@@ -581,11 +635,11 @@ class PaintLCM(QMainWindow):
             print('capturing drawing')
             self.im = scene_to_image(self.canvas)
 
-            # Check if image dimensions are 512x512
-            if self.im.size != (IMG_W, IMG_H):
+            # Check if image dimensions are correct
+            if self.im.size != (self.img_dim[0], self.img_dim[1]):
                 print("Image dimensions are not good. Upscaling...")
                 # Upscale the image to fit needed dimensions
-                self.im = self.im.resize((IMG_W, IMG_H), Image.BICUBIC)
+                self.im = self.im.resize((self.img_dim[0], self.img_dim[1]), Image.BICUBIC)
 
             self.im.save('input.png')
 
@@ -607,6 +661,7 @@ class PaintLCM(QMainWindow):
             print('result saved')
 
             self.result_canvas.setPhoto(pixmap=QPixmap('result.png'))
+
 
 def main(argv=None):
     """
