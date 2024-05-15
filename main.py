@@ -24,9 +24,10 @@ import gc
 # Params
 BASE_DIR = res.find('img/AI_ref_images_bo')
 LINE_METHODS = ['Sobel + BIL', 'Sobel Custom', 'Canny', 'Canny + L2', 'Canny + BIL', 'Canny + Blur', 'Random Forests', 'RF Custom',  'No processing']
-IMG_W = 500
-IMG_H = 500
+IMG_W = 512
+IMG_H = 512
 CAPTURE_INT = 1000  # milliseconds
+HD_RES = 1024 # resolution for upscale
 
 
 def new_dir(dir_path):
@@ -407,7 +408,7 @@ class PaintLCM(QMainWindow):
         )
 
         print('running upscale...')
-        out = lcm.tile_upscale(self.out, self.p, 1024)
+        out = lcm.tile_upscale(self.out, self.p, HD_RES)
 
         # Save the image if a file path was provided, using high-quality settings for JPEG
         if file_path:

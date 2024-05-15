@@ -231,6 +231,17 @@ def load_models(model_id="Lykon/dreamshaper-8", use_ip=True):
     return infer
 
 
+def standard_upscale(source_image, prompt):
+    from diffusers import StableDiffusionUpscalePipeline
+
+    model_id = "stabilityai/stable-diffusion-x4-upscaler"
+    pipeline = StableDiffusionUpscalePipeline.from_pretrained(model_id, torch_dtype=torch.float16)
+    pipeline = pipeline.to("cuda")
+
+    upscaled_image = pipeline(prompt=prompt, image=source_image).images[0]
+
+    return upscaled_image
+
 def tile_upscale(source_image, prompt, res):
     from diffusers import ControlNetModel, DiffusionPipeline
     from diffusers.utils import load_image
@@ -255,15 +266,15 @@ def tile_upscale(source_image, prompt, res):
 
     condition_image = resize_for_condition_image(source_image, res)
 
-    image = pipe(prompt="best quality, "+ prompt,
+    image = pipe(prompt= 'highest quality',
                  negative_prompt="blur, lowres, bad anatomy, bad hands, cropped, worst quality",
                  image=condition_image,
                  controlnet_conditioning_image=condition_image,
                  width=condition_image.size[0],
                  height=condition_image.size[1],
-                 strength=1.0,
+                 strength=1,
                  generator=torch.manual_seed(0),
-                 num_inference_steps=32,
+                 num_inference_steps=40,
                  ).images[0]
 
     return image
