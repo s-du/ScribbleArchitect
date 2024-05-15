@@ -267,6 +267,8 @@ class PaintLCM(QMainWindow):
         # self.actionLoad_IP_Adapter_reference_image.triggered.connect(self.define_ip_ref)
         self.pushButton.clicked.connect(self.update_image)
         self.pushButton_example.clicked.connect(self.import_example)
+        self.pushButton_plus.clicked.connect(lambda: self.scale_scene('plus'))
+        self.pushButton_min.clicked.connect(lambda: self.scale_scene('min'))
 
         # when editing canvas --> update inference
         self.canvas.endDrawing.connect(self.update_brush_stroke)
@@ -319,6 +321,40 @@ class PaintLCM(QMainWindow):
         self.canvas.change_to_brush_cursor()
 
     # general functions __________________________________________
+    def scale_scene(self, direction):
+        # Get the current scene rect
+        rect = self.canvas.sceneRect()
+        w, h = int(rect.width()), int(rect.height())  # Ensure w and h are integers
+
+        # Determine the scaling factor
+        if direction == 'plus':
+            factor = 1.2
+        elif direction == 'min':
+            factor = 0.8
+        else:
+            return  # Invalid direction
+
+        # Scale the dimensions
+        new_w, new_h = int(w * factor), int(h * factor)
+
+        # Create a QImage of the current scene rect size
+        image = QImage(w, h, QImage.Format.Format_ARGB32)
+        image.fill(Qt.GlobalColor.transparent)  # Ensure the image has a transparent background
+        painter = QPainter(image)
+
+        # Render the entire scene into the QImage
+        self.canvas.scene.render(painter, QRectF(0, 0, w, h), rect)
+        painter.end()
+
+        pixmap = QPixmap.fromImage(image)
+
+        # Scale the pixmap
+        scaled_pixmap = pixmap.scaled(new_w, new_h, Qt.AspectRatioMode.KeepAspectRatio,
+                                      Qt.TransformationMode.SmoothTransformation)
+
+        # Update the scene with new dimensions and set the scaled pixmap
+        self.canvas.create_new_scene(new_w, new_h)
+        self.canvas.setPhoto(scaled_pixmap)
 
     def snapshot_toolbar(self):
         """ Capture the current state of the toolbar. """
@@ -651,7 +687,7 @@ class PaintLCM(QMainWindow):
 
             # Check if image dimensions are correct
             if self.im.size != (self.img_dim[0], self.img_dim[1]):
-                print("Image dimensions are not good. Upscaling...")
+                print("Image dimensions are not good. Rescaling...")
                 # Upscale the image to fit needed dimensions
                 self.im = self.im.resize((self.img_dim[0], self.img_dim[1]), Image.BICUBIC)
 
