@@ -151,6 +151,13 @@
       <widget class="QComboBox" name="comboBox_style"/>
      </item>
      <item>
+      <widget class="QPushButton" name="pushButton_import_style">
+       <property name="text">
+        <string>Import custom style</string>
+       </property>
+      </widget>
+     </item>
+     <item>
       <widget class="QPushButton" name="pushButton_example">
        <property name="text">
         <string>Generate example</string>

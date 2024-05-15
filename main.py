@@ -65,6 +65,30 @@ def scene_to_image(viewer):
     return inverted_img
 
 
+class CustomDialog(QDialog):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Enter Name and Prompt")
+
+        self.name_label = QLabel("Name:")
+        self.name_input = QLineEdit(self)
+
+        self.prompt_label = QLabel("Prompt:")
+        self.prompt_input = QTextEdit(self)
+
+        self.ok_button = QPushButton("OK")
+        self.ok_button.clicked.connect(self.accept)
+
+        self.layout = QVBoxLayout()
+        self.layout.addWidget(self.name_label)
+        self.layout.addWidget(self.name_input)
+        self.layout.addWidget(self.prompt_label)
+        self.layout.addWidget(self.prompt_input)
+        self.layout.addWidget(self.ok_button)
+        self.setLayout(self.layout)
+
+    def getInputs(self):
+        return self.name_input.text(), self.prompt_input.toPlainText()
 class PaintLCM(QMainWindow):
     def __init__(self, is_dark_theme):
         super().__init__()
@@ -144,43 +168,11 @@ class PaintLCM(QMainWindow):
                               res.find('img/examples/facade_default.png')
                               ]
 
-        base_dir = BASE_DIR
         self.type_names = []  # To store the type names as read from folder names
         self.all_ip_styles = []  # To store style names
         self.all_ip_prompts = []  # To store corresponding prompts
         self.all_ip_paths = []  # To store image paths
-
-        # Iterate through each type subfolder in the base directory
-        for idx, type_folder in enumerate(sorted(os.listdir(base_dir))):
-            type_path = os.path.join(base_dir, type_folder)
-            if os.path.isdir(type_path):
-                self.type_names.append(type_folder)
-
-                styles = []
-                prompts = []
-                image_paths = []
-
-                # Iterate through each file in the subfolder
-                for file in sorted(os.listdir(type_path)):
-                    if file.endswith('.png'):
-                        image_path = os.path.join(type_path, file)
-                        image_paths.append(image_path)
-
-                        # Attempt to find a matching text file for prompts
-                        prompt_path = image_path.replace('.png', '.txt')
-                        prompt = ''
-                        if os.path.exists(prompt_path):
-                            with open(prompt_path, 'r') as f:
-                                prompt = f.read().strip()
-                        prompts.append(prompt)
-
-                        # Assume style name is the file name without extension
-                        style_name = os.path.splitext(file)[0]
-                        styles.append(style_name)
-
-                self.all_ip_styles.append(styles)
-                self.all_ip_prompts.append(prompts)
-                self.all_ip_paths.append(image_paths)
+        self.generate_ai_database()
 
         # specific variables
         if not path.exists(cache_path):
@@ -240,8 +232,7 @@ class PaintLCM(QMainWindow):
 
         # create connections
         self.create_connections()
-
-        self.change_predefined_prompts()
+        self.change_type()
 
         # run first inference
         self.initialization = False
@@ -269,12 +260,13 @@ class PaintLCM(QMainWindow):
         self.pushButton_example.clicked.connect(self.import_example)
         self.pushButton_plus.clicked.connect(lambda: self.scale_scene('plus'))
         self.pushButton_min.clicked.connect(lambda: self.scale_scene('min'))
+        self.pushButton_import_style.clicked.connect(self.import_custom_style)
 
         # when editing canvas --> update inference
         self.canvas.endDrawing.connect(self.update_brush_stroke)
 
         # comboboxes
-        self.comboBox.currentIndexChanged.connect(self.change_predefined_prompts)
+        self.comboBox.currentIndexChanged.connect(self.change_type)
         self.comboBox_style.currentIndexChanged.connect(self.change_style)
         self.comboBox_lines.currentIndexChanged.connect(self.change_capture_option)
 
@@ -321,6 +313,47 @@ class PaintLCM(QMainWindow):
         self.canvas.change_to_brush_cursor()
 
     # general functions __________________________________________
+    def generate_ai_database(self):
+        base_dir = BASE_DIR
+
+        # reset data
+        self.type_names = []  # To store the type names as read from folder names
+        self.all_ip_styles = []  # To store style names
+        self.all_ip_prompts = []  # To store corresponding prompts
+        self.all_ip_paths = []  # To store image paths
+
+        # Iterate through each type subfolder in the base directory
+        for idx, type_folder in enumerate(sorted(os.listdir(base_dir))):
+            type_path = os.path.join(base_dir, type_folder)
+            if os.path.isdir(type_path):
+                self.type_names.append(type_folder)
+
+                styles = []
+                prompts = []
+                image_paths = []
+
+                # Iterate through each file in the subfolder
+                for file in sorted(os.listdir(type_path)):
+                    if file.endswith('.png'):
+                        image_path = os.path.join(type_path, file)
+                        image_paths.append(image_path)
+
+                        # Attempt to find a matching text file for prompts
+                        prompt_path = image_path.replace('.png', '.txt')
+                        prompt = ''
+                        if os.path.exists(prompt_path):
+                            with open(prompt_path, 'r') as f:
+                                prompt = f.read().strip()
+                        prompts.append(prompt)
+
+                        # Assume style name is the file name without extension
+                        style_name = os.path.splitext(file)[0]
+                        styles.append(style_name)
+
+                self.all_ip_styles.append(styles)
+                self.all_ip_prompts.append(prompts)
+                self.all_ip_paths.append(image_paths)
+
     def scale_scene(self, direction):
         # Get the current scene rect
         rect = self.canvas.sceneRect()
@@ -400,8 +433,10 @@ class PaintLCM(QMainWindow):
     def toggle_push_buttons(self):
         if self.pushButton_example.isVisible():
             self.pushButton_example.hide()
+            self.pushButton_import_style.hide()
         else:
             self.pushButton_example.show()
+            self.pushButton_import_style.show()
 
     def toggle_canvas(self):
         # Hide or show canvas based on checkbox state
@@ -465,6 +500,70 @@ class PaintLCM(QMainWindow):
         self.canvas.clean_scene()
         self.canvas.setPhoto(pixmap)
 
+    def find_custom_index(self):
+        custom_text = "custom"
+        for index in range(self.comboBox.count()):
+            if custom_text in self.comboBox.itemText(index):
+                return index
+        return -1
+    def import_custom_style(self):
+        # file selection dialog
+        file_name, _ = QFileDialog.getOpenFileName(self, "Select Image File", "",
+                                                   "Image Files (*.png *.jpg *.jpeg *.bmp *.gif)")
+        if file_name:
+            # check max dimensions
+            image = cv2.imread(file_name)
+            max_dimension = 1024
+            height, width = image.shape[:2]
+            scaling_factor = max_dimension / max(height, width)
+
+            if scaling_factor < 1:
+                new_size = (int(width * scaling_factor), int(height * scaling_factor))
+                resized_image = cv2.resize(image, new_size, interpolation=cv2.INTER_AREA)
+            else:
+                resized_image = image
+
+            # open diaglog to get name and prompt
+            dialog = CustomDialog()
+            if dialog.exec() == QDialog.DialogCode.Accepted:
+                name, prompt = dialog.getInputs()
+
+                if name and prompt:
+                    # save image and text to database
+                    image_name = f"{name}.png"
+                    dest_path = os.path.join(BASE_DIR, 'custom', image_name)
+                    os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+                    cv2.imwrite(dest_path, resized_image)
+
+                    text_file_path = os.path.join(BASE_DIR, 'custom', f"{name}.txt")
+                    with open(text_file_path, 'w') as text_file:
+                        text_file.write(prompt)
+
+                    self.initialization = True
+                    # update data
+                    self.generate_ai_database()
+
+                    # reset type combobox
+                    self.comboBox.clear()
+                    self.comboBox.addItems([f'Type {i + 1} ({name})' for i, name in enumerate(self.type_names)])
+
+                    # update_styles
+                    self.change_type()
+
+                    # Find the index of 'custom' in the comboBox
+                    index = self.find_custom_index()
+                    print(index)
+                    self.comboBox.setCurrentIndex(index)
+
+                    self.initialization = False
+                    self.update_image()
+
+                else:
+                    QMessageBox.warning(self, "Input Error", "Name and prompt cannot be empty.")
+            else:
+                QMessageBox.warning(self, "Dialog Canceled", "Operation was canceled.")
+
+
     def import_image(self):
         # file selection dialog
         file_name, _ = QFileDialog.getOpenFileName(self, "Select Image File", "",
@@ -482,7 +581,6 @@ class PaintLCM(QMainWindow):
                 resized_image = image
 
             # compile new size parameters
-
             self.img_dim = (int(width * scaling_factor), int(height * scaling_factor))
 
             self.result_canvas.create_new_scene(self.img_dim[0], self.img_dim[1])
@@ -607,36 +705,33 @@ class PaintLCM(QMainWindow):
         event.accept()
 
     # Inference parameters __________________________________________
-    """
-    def define_ip_ref(self):
-        try:
-            img = QFileDialog.getOpenFileName(self, u"Ouverture de fichiers", "",
-                                              "Image Files (*.png *.jpeg *.jpg *.bmp *.tif)")
-            print(f'the following image will be loaded {img[0]}')
-        except:
-            pass
+    def change_type(self):
+        self.load_style_combobox()
+        self.change_predefined_prompts()
+        self.update_image()
 
-        if img[0] != '':
-            # load and show new image
-            self.ip_ref_img = img[0]
-            self.ip_custom_path = img[0]
+    def load_style_combobox(self):
+        change = False
+        if not self.initialization:
+            change = True
+            self.initialization = True
 
-        self.change_inference_model()
-        self.comboBox_ip_styles.setCurrentIndex(len(self.ip_img_paths))  # put combobox to 'custom'
-    """
-
-    def change_predefined_prompts(self):
         idx = self.comboBox.currentIndex()
-
         self.comboBox_style.clear()
         if idx < len(self.all_ip_paths):
             for style, img_path in zip(self.all_ip_styles[idx], self.all_ip_paths[idx]):
                 icon = QIcon(img_path)
                 self.comboBox_style.addItem(icon, style)
+
+        if change:
+            self.initialization = False
+
+
+
+    def change_predefined_prompts(self):
+        idx = self.comboBox.currentIndex()
         if not self.checkBox_keep_p.isChecked():
             self.textEdit.setText(self.all_ip_prompts[idx][0])
-            print('update from change of predefined prompt')
-        self.update_image()
 
     def change_style(self):
         idx = self.comboBox.currentIndex()
@@ -648,7 +743,6 @@ class PaintLCM(QMainWindow):
             else:
                 self.textEdit.setText(self.all_ip_prompts[idx][idx2])
 
-        print('update from change of style')
         self.update_image()
 
     def update_brush_stroke(self):
