@@ -108,6 +108,7 @@ class PaintLCM(QMainWindow):
         self.resized_image = None
         self.actions_visible = True
         self.initialization = True
+        self.dockWidget_3.hide()
 
         self.line_mode = 0
 
@@ -283,6 +284,7 @@ class PaintLCM(QMainWindow):
         # checkboxes
         self.checkBox_sp.stateChanged.connect(self.change_style)
         self.checkBox_hide.stateChanged.connect(self.toggle_canvas)
+        self.checkBox_float_draw.stateChanged.connect(self.toggle_drawing_zone)
 
         # other actions
         self.actionAdvanced_options.triggered.connect(self.toggle_dock_visibility)
@@ -297,7 +299,7 @@ class PaintLCM(QMainWindow):
         self.canvas.terminate_bezier()
         self.canvas.brush_size = 3
         self.canvas.brush_cur = self.canvas.create_circle_cursor(3)
-        self.canvas.set_tool('brush')
+        self.canvas.set_tool('pencil')
 
     def switch_to_bezier(self):
         self.canvas.set_tool('bezier')
@@ -346,6 +348,17 @@ class PaintLCM(QMainWindow):
             self.dockWidget_2.hide()
         else:
             self.dockWidget_2.show()
+
+    def toggle_drawing_zone(self):
+        if self.dockWidget_3.isVisible():
+            self.dockWidget_3.hide()
+            self.horizontalLayout_4.removeWidget(self.result_canvas)
+            self.horizontalLayout_4.addWidget(self.canvas)
+            self.horizontalLayout_4.addWidget(self.result_canvas)
+        else:
+            self.dockWidget_3.show()
+            self.horizontalLayout_4.removeWidget(self.canvas)
+            self.horizontalLayout.addWidget(self.canvas)
 
     def toggle_push_buttons(self):
         if self.pushButton_example.isVisible():

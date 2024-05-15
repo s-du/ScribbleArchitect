@@ -3,6 +3,9 @@ from PyQt6.QtCore import *
 from PyQt6.QtGui import *
 from PyQt6.QtWidgets import *
 
+import numpy as np
+from scipy.interpolate import UnivariateSpline
+
 class TransparentBox(QWidget):
     def __init__(self, size):
         super().__init__()
@@ -285,7 +288,7 @@ class Canvas(QGraphicsView):
 
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
-            if self.current_tool in ['brush', 'eraser']:
+            if self.current_tool in ['brush', 'eraser','pencil']:
                 self.drawing = True
                 self.create_bezier = False
                 self.start_point = self.mapToScene(event.pos())
@@ -345,8 +348,8 @@ class Canvas(QGraphicsView):
     def mouseMoveEvent(self, event):
         if event.buttons() == Qt.MouseButton.LeftButton and self.drawing:
             end_point = self.mapToScene(event.pos())
-            if self.current_tool in ['brush', 'eraser']:
-                if self.current_tool == 'brush':
+            if self.current_tool in ['brush', 'eraser','pencil']:
+                if self.current_tool in ['brush', 'pencil']:
                     self.draw_line(event.pos())
                 elif self.current_tool == 'eraser':
                     self.erase_line(event.pos())
@@ -385,6 +388,9 @@ class Canvas(QGraphicsView):
             self.temp_item.setRect(rect)
 
     def draw_line(self, end_point):
+        if self.last_point is None:
+            self.last_point = end_point  # Ensure this is a QPoint
+
         path = QPainterPath(self.mapToScene(self.last_point))
         path.lineTo(self.mapToScene(end_point))
         pen = QPen(self.current_color, self.brush_size, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin)
@@ -392,6 +398,9 @@ class Canvas(QGraphicsView):
         self.last_point = end_point
 
     def erase_line(self, end_point):
+        if self.last_point is None:
+            self.last_point = end_point  # Ensure this is a QPoint
+
         eraser_path = QPainterPath(self.mapToScene(self.last_point))
         eraser_path.lineTo(self.mapToScene(end_point))
         eraser = QPen(Qt.GlobalColor.white, self.brush_size, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin)
@@ -425,9 +434,98 @@ class Canvas(QGraphicsView):
         self.brush_cur = self.create_circle_cursor(self.brush_size)
         self.change_to_brush_cursor()
 
+    def tabletEvent(self, event):
+        pos = event.position().toPoint()  # Convert QPointF to QPoint
+        pressure = event.pressure()  # Pressure is a float between 0.0 and 1.0
+
+        if self.current_tool == 'brush':
+            self.current_color = QColor(Qt.GlobalColor.black)
+            pen_size = max(1, min(int(pressure * 50), 50))  # Dynamic pen size based on pressure
+        elif self.current_tool == 'eraser':
+            self.current_color = QColor(Qt.GlobalColor.white)
+            pen_size = max(1, min(int(pressure * 50), 50))  # Dynamic pen size based on pressure
+        elif self.current_tool == 'pencil':
+            self.current_color = QColor(45,45,45)
+            pen_size = max(1, min(int(pressure * 15), 15))
+        else:
+            self.current_color = Qt.GlobalColor.black
+            pen_size = max(1, min(int(pressure * 50), 50))
+
+        if event.type() == QEvent.Type.TabletPress:
+            self.drawing = True
+            self.current_path = QPainterPath()
+            self.current_path.moveTo(self.mapToScene(pos))
+            self.last_pen_size = pen_size
+            self.create_new_segment(pen_size)
+
+        elif event.type() == QEvent.Type.TabletMove and self.drawing:
+            if self.last_pen_size != pen_size:
+                # Finish the current segment and start a new one
+                self.create_new_segment(pen_size)
+
+            # Continue the path with the new or existing pen size
+            self.current_path.lineTo(self.mapToScene(pos))
+            self.path_item.setPath(self.current_path)
+
+        elif event.type() == QEvent.Type.TabletRelease:
+            if self.drawing:
+                self.drawing = False
+                # self.smooth_and_finalize_path()
+
+        event.accept()
+
+    def create_new_segment(self, pen_size):
+        if self.current_path:
+            # Start a new path from the last point
+            new_path = QPainterPath()
+            new_path.moveTo(self.current_path.currentPosition())
+            self.current_path = new_path
+            self.path_item = self.scene.addPath(self.current_path,
+                                                QPen(self.current_color, pen_size, Qt.PenStyle.SolidLine,
+                                                     Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
+            self.last_pen_size = pen_size
+
+    def smooth_and_finalize_path(self):
+        if not self.current_path or self.current_path.isEmpty():
+            return
+
+        # Extract points from QPainterPath
+        points = []
+        num_elements = self.current_path.elementCount()
+        for i in range(num_elements):
+            elem = self.current_path.elementAt(i)
+            points.append((elem.x, elem.y))
+
+        if len(points) < 3:
+            return  # Not enough points to smooth
+
+        # Convert points to numpy array for processing
+        points = np.array(points)
+        x = points[:, 0]
+        y = points[:, 1]
+
+        # Fit spline to points
+        try:
+            spline = UnivariateSpline(x, y, s=len(points) * 1.5)  # Adjust smoothing factor based on your needs
+            xs = np.linspace(x.min(), x.max(), 50)  # More points for a smoother curve
+            ys = spline(xs)
+
+            # Create a new QPainterPath with the smoothed curve
+            smoothed_path = QPainterPath()
+            smoothed_path.moveTo(xs[0], ys[0])
+            for xi, yi in zip(xs[1:], ys[1:]):
+                smoothed_path.lineTo(xi, yi)
+
+            # Update the path item with the smoothed path
+            if self.path_item:
+                self.path_item.setPath(smoothed_path)
+
+        except Exception as e:
+            print("Error in smoothing:", e)
+
     def set_tool(self, tool):
         self.current_tool = tool
-        if tool == 'brush' or tool == 'eraser':
+        if tool in ['brush','eraser','pencil']:
             self.change_to_brush_cursor()
         else:
             print('cross cursor')
