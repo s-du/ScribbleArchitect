@@ -57,6 +57,7 @@ class simpleCanvas(QGraphicsView):
 
         self._photo = QGraphicsPixmapItem()
         self.scene.addItem(self._photo)
+        self.pixmap = None
 
         self.setBackgroundBrush(QBrush(QColor(180, 180, 180)))
         self.setContentsMargins(0, 0, 0, 0)
@@ -92,6 +93,7 @@ class simpleCanvas(QGraphicsView):
                                          Qt.TransformationMode.SmoothTransformation)
 
             self._photo.setPixmap(scaledPixmap)
+            self.pixmap = scaledPixmap
 
 
 class Canvas(QGraphicsView):
@@ -113,12 +115,18 @@ class Canvas(QGraphicsView):
 
         self._photo = QGraphicsPixmapItem()
         self.scene.addItem(self._photo)
+        self.pixmap = None
+
+        self.drawing_layer = QPixmap(self.w, self.h)
+        self.drawing_layer.fill(Qt.GlobalColor.transparent)
 
         self.current_tool = 'brush'
         self.current_color = QColor(Qt.GlobalColor.black)
         self.brush_size = 10
         self.drawing = False
         self.last_point = None
+
+        self.has_background = False
 
         # bezier param
         self.create_bezier = False
@@ -181,6 +189,13 @@ class Canvas(QGraphicsView):
         self._photo = QGraphicsPixmapItem()
         self.scene.addItem(self._photo)
 
+        self.pixmap = None
+        self.has_background = False
+
+        # reset drawing zone
+        self.drawing_layer = QPixmap(self.w, self.h)
+        self.drawing_layer.fill(Qt.GlobalColor.transparent)
+
 
     def set_transparency(self, transparent):
         """ Set the transparency of the canvas. """
@@ -190,6 +205,8 @@ class Canvas(QGraphicsView):
             self.setWindowOpacity(1.0)  # Opaque
 
     def create_new_scene(self, w, h):
+        self.w = w
+        self.h = h
         self.scene.clear()
         self.scene = QGraphicsScene()
         self.setScene(self.scene)
@@ -198,15 +215,22 @@ class Canvas(QGraphicsView):
         self.setMaximumSize(w, h)
         self.resetTransform()
         self.add_empty_photo()
+
+        # reset drawing zone
+        self.drawing_layer = QPixmap(self.w, self.h)
+        self.drawing_layer.fill(Qt.GlobalColor.transparent)
+
         self.update()
 
     def add_empty_photo(self):
+        self.pixmap = None
         self._photo = QGraphicsPixmapItem()
         self.scene.addItem(self._photo)
 
     def setPhoto(self, pixmap=None):
         if pixmap and not pixmap.isNull():
             self._photo.setPixmap(pixmap)
+            self.pixmap = pixmap
 
     def change_to_brush_cursor(self):
         self.setCursor(self.brush_cur)
@@ -387,25 +411,72 @@ class Canvas(QGraphicsView):
         elif self.current_tool == 'rectangle':
             self.temp_item.setRect(rect)
 
-    def draw_line(self, end_point):
-        if self.last_point is None:
-            self.last_point = end_point  # Ensure this is a QPoint
-
-        path = QPainterPath(self.mapToScene(self.last_point))
-        path.lineTo(self.mapToScene(end_point))
-        pen = QPen(self.current_color, self.brush_size, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin)
-        self.scene.addPath(path, pen)
-        self.last_point = end_point
-
     def erase_line(self, end_point):
         if self.last_point is None:
             self.last_point = end_point  # Ensure this is a QPoint
 
         eraser_path = QPainterPath(self.mapToScene(self.last_point))
         eraser_path.lineTo(self.mapToScene(end_point))
-        eraser = QPen(Qt.GlobalColor.white, self.brush_size, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin)
-        self.scene.addPath(eraser_path, eraser)
+
+        # Draw on the drawing layer
+        painter = QPainter(self.drawing_layer)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        pen = QPen(Qt.GlobalColor.white, self.brush_size, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap,
+                   Qt.PenJoinStyle.RoundJoin)
+        painter.setPen(pen)
+        painter.drawPath(eraser_path)
+        painter.end()
+
+        # Composite the drawing layer over the background pixmap
+        self.update_composite_pixmap()
+
         self.last_point = end_point
+
+    def draw_line(self, end_point):
+        if self.last_point is None:
+            self.last_point = end_point  # Ensure this is a QPoint
+
+        path = QPainterPath(self.mapToScene(self.last_point))
+        path.lineTo(self.mapToScene(end_point))
+
+        # Draw on the drawing layer
+        painter = QPainter(self.drawing_layer)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        pen = QPen(Qt.GlobalColor.black, self.brush_size, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap,
+                   Qt.PenJoinStyle.RoundJoin)
+        painter.setPen(pen)
+        painter.drawPath(path)
+        painter.end()
+
+        # Composite the drawing layer over the background pixmap
+        self.update_composite_pixmap()
+
+        self.last_point = end_point
+
+    def update_composite_pixmap(self):
+        if not self.pixmap:
+            self._photo.setPixmap(self.drawing_layer)
+            return
+
+        # Create a new pixmap to hold the composite image
+        composite_pixmap = QPixmap(self.w, self.h)
+        composite_pixmap.fill(Qt.GlobalColor.transparent)
+
+        # Draw the background pixmap
+        painter = QPainter(composite_pixmap)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.drawPixmap(0, 0, self.pixmap)
+
+        # Set the composition mode to SourceOver
+        painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Multiply)
+
+        # Draw the drawing layer using the mask
+        painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Multiply)
+        painter.drawPixmap(0, 0, self.drawing_layer)
+
+        painter.end()
+
+        self._photo.setPixmap(composite_pixmap)
 
     def draw_ellipse(self, start_point, end_point):
         rect = QRectF(start_point, end_point)
@@ -438,18 +509,7 @@ class Canvas(QGraphicsView):
         pos = event.position().toPoint()  # Convert QPointF to QPoint
         pressure = event.pressure()  # Pressure is a float between 0.0 and 1.0
 
-        if self.current_tool == 'brush':
-            self.current_color = QColor(Qt.GlobalColor.black)
-            pen_size = max(1, min(int(pressure * 50), 50))  # Dynamic pen size based on pressure
-        elif self.current_tool == 'eraser':
-            self.current_color = QColor(Qt.GlobalColor.white)
-            pen_size = max(1, min(int(pressure * 50), 50))  # Dynamic pen size based on pressure
-        elif self.current_tool == 'pencil':
-            self.current_color = QColor(45,45,45)
-            pen_size = max(1, min(int(pressure * 15), 15))
-        else:
-            self.current_color = Qt.GlobalColor.black
-            pen_size = max(1, min(int(pressure * 50), 50))
+        pen_size = self.set_pen_pressure(pressure)
 
         if event.type() == QEvent.Type.TabletPress:
             self.drawing = True
@@ -525,6 +585,8 @@ class Canvas(QGraphicsView):
 
     def set_tool(self, tool):
         self.current_tool = tool
+        self.set_pen_color()
+
         if tool in ['brush','eraser','pencil']:
             self.change_to_brush_cursor()
         else:
@@ -535,3 +597,25 @@ class Canvas(QGraphicsView):
         color = QColorDialog.getColor()
         if color.isValid():
             self.current_color = color
+
+    def set_pen_color(self):
+        if self.current_tool == 'brush':
+            self.current_color = QColor(Qt.GlobalColor.black)
+        elif self.current_tool == 'eraser':
+            self.current_color = QColor(Qt.GlobalColor.white)
+        elif self.current_tool == 'pencil':
+            self.current_color = QColor(45,45,45)
+        else:
+            self.current_color = Qt.GlobalColor.black
+
+    def set_pen_pressure(self, pressure):
+        if self.current_tool == 'brush':
+            pen_size = max(1, min(int(pressure * 50), 50))  # Dynamic pen size based on pressure
+        elif self.current_tool == 'eraser':
+            pen_size = max(1, min(int(pressure * 50), 50))  # Dynamic pen size based on pressure
+        elif self.current_tool == 'pencil':
+            pen_size = max(1, min(int(pressure * 15), 15))
+        else:
+            pen_size = max(1, min(int(pressure * 50), 50))
+
+        return pen_size

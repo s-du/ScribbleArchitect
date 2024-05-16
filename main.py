@@ -23,11 +23,12 @@ import gc
 
 # Params
 BASE_DIR = res.find('img/AI_ref_images_bo')
-LINE_METHODS = ['Sobel + BIL', 'Sobel Custom', 'Canny', 'Canny + L2', 'Canny + BIL', 'Canny + Blur', 'Random Forests', 'RF Custom',  'No processing']
+LINE_METHODS = ['Sobel + BIL', 'Sobel Custom', 'Canny', 'Canny + L2', 'Canny + BIL', 'Canny + Blur', 'Random Forests',
+                'RF Custom', 'No processing']
 IMG_W = 512
 IMG_H = 512
 CAPTURE_INT = 1000  # milliseconds
-HD_RES = 1024 # resolution for upscale
+HD_RES = 1024  # resolution for upscale
 
 
 def new_dir(dir_path):
@@ -44,10 +45,22 @@ def scene_to_image(viewer):
     # Define the size of the image (same as the scene's bounding rect)
     image = QImage(viewer.viewport().size(), QImage.Format.Format_ARGB32_Premultiplied)
 
-    # Create a QPainter to render the scene into the QImage
-    painter = QPainter(image)
-    viewer.render(painter)
-    painter.end()
+    if viewer.has_background:
+        # Remove the background from the scene temporarily
+        viewer._photo.setPixmap(viewer.drawing_layer)
+
+        # Create a QPainter to render the scene into the QImage
+        painter = QPainter(image)
+        viewer.render(painter)
+        painter.end()
+
+        viewer.update_composite_pixmap()
+
+    else:
+        # Create a QPainter to render the scene into the QImage
+        painter = QPainter(image)
+        viewer.render(painter)
+        painter.end()
 
     file_path = 'input.png'
     image.save(file_path)
@@ -89,6 +102,8 @@ class CustomDialog(QDialog):
 
     def getInputs(self):
         return self.name_input.text(), self.prompt_input.toPlainText()
+
+
 class PaintLCM(QMainWindow):
     def __init__(self, is_dark_theme):
         super().__init__()
@@ -506,6 +521,7 @@ class PaintLCM(QMainWindow):
             if custom_text in self.comboBox.itemText(index):
                 return index
         return -1
+
     def import_custom_style(self):
         # file selection dialog
         file_name, _ = QFileDialog.getOpenFileName(self, "Select Image File", "",
@@ -563,9 +579,7 @@ class PaintLCM(QMainWindow):
             else:
                 QMessageBox.warning(self, "Dialog Canceled", "Operation was canceled.")
 
-
     def import_image(self):
-        # file selection dialog
         file_name, _ = QFileDialog.getOpenFileName(self, "Select Image File", "",
                                                    "Image Files (*.png *.jpg *.jpeg *.bmp *.gif)")
         if file_name:
@@ -574,6 +588,7 @@ class PaintLCM(QMainWindow):
             max_dimension = max(self.img_dim[0], self.img_dim[1])
             height, width = image.shape[:2]
             scaling_factor = max_dimension / max(height, width)
+
             if scaling_factor < 1:
                 new_size = (int(width * scaling_factor), int(height * scaling_factor))
                 resized_image = cv2.resize(image, new_size, interpolation=cv2.INTER_AREA)
@@ -591,18 +606,65 @@ class PaintLCM(QMainWindow):
 
             # convert to grayscale
             self.resized_image = resized_image
+            self.temp_file_path = 'temp_resized_image.png'
+            cv2.imwrite(self.temp_file_path, resized_image)
 
-            # line operation
-            processed_image = lcm.screen_to_lines(self.resized_image, self.line_mode)
+            # Create a message box
+            msg_box = QMessageBox(self)
+            msg_box.setIcon(QMessageBox.Icon.Question)
+            msg_box.setWindowTitle('Import Image')
+            msg_box.setText('How would you like to import the image?')
+            msg_box.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
 
-            # Convert the inverted image back to QPixmap
-            final_pixmap = self.convertMatToQPixmap(processed_image)
+            # Retrieve buttons and set their text
+            yes_button = msg_box.button(QMessageBox.StandardButton.Yes)
+            no_button = msg_box.button(QMessageBox.StandardButton.No)
+            yes_button.setText('As support for drawing')
+            no_button.setText('For direct processing')
 
-            # save pixmap in drawing zone
-            self.canvas.setPhoto(final_pixmap)
+            # Execute the message box and get the user's choice
+            choice = msg_box.exec()
 
-            # update render
-            self.update_image()
+            # Call the appropriate method based on the user's choice
+            if choice == QMessageBox.StandardButton.Yes:
+                self.import_support_image()
+            else:
+                self.import_line_image()
+
+    def import_support_image(self):
+        image = cv2.imread(self.temp_file_path, cv2.IMREAD_UNCHANGED)
+
+        # Check if the image has an alpha channel
+        if image.shape[2] == 3:
+            # Add an alpha channel
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2BGRA)
+
+        # Reduce opacity to 50%
+        alpha_channel = image[:, :, 3]
+        alpha_channel = (alpha_channel * 0.5).astype(np.uint8)
+        image[:, :, 3] = alpha_channel
+
+        # Save the image with reduced opacity
+        cv2.imwrite(self.temp_file_path, image)
+
+        # Convert back to QPixmap to display in a QLabel or other widget
+        result_pixmap = QPixmap(self.temp_file_path)
+        self.canvas.setPhoto(result_pixmap)
+
+        self.canvas.has_background = True
+
+    def import_line_image(self):
+        # line operation
+        processed_image = lcm.screen_to_lines(self.resized_image, self.line_mode)
+
+        # Convert the inverted image back to QPixmap
+        final_pixmap = self.convertMatToQPixmap(processed_image)
+
+        # save pixmap in drawing zone
+        self.canvas.setPhoto(final_pixmap)
+
+        # update render
+        self.update_image()
 
     # Screen capture __________________________________________
     def toggle_capture(self):
@@ -726,8 +788,6 @@ class PaintLCM(QMainWindow):
         if change:
             self.initialization = False
 
-
-
     def change_predefined_prompts(self):
         idx = self.comboBox.currentIndex()
         if not self.checkBox_keep_p.isChecked():
@@ -777,6 +837,7 @@ class PaintLCM(QMainWindow):
                 f'here are the parameters \n steps: {steps}\n cfg: {cfg}\n ipstrength: {ip_strength}\n prompt: {self.p}')
 
             print('capturing drawing')
+
             self.im = scene_to_image(self.canvas)
 
             # Check if image dimensions are correct
