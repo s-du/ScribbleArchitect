@@ -148,7 +148,12 @@ class PaintLCM(QMainWindow):
         self.resized_image = None
         self.actions_visible = True
         self.initialization = True
-        self.dockWidget_3.hide()
+        self.dockWidget_3.hide() # hide floating drawing zone
+
+        # prepare sequence recording
+        self.is_recording = False
+        self.record_folder = ''
+        self.n_frame = 0
 
         self.line_mode = 0
 
@@ -222,7 +227,8 @@ class PaintLCM(QMainWindow):
                                    self.capture_action,
                                    self.export_action,
                                    self.exporthd_action,
-                                   self.import_action]
+                                   self.import_action,
+                                   self.sequence_action]
 
         # Create a snapshot of the toolbar with positions
         self.original_toolbar_state = [(action, self.toolBar.actions().index(action)) for action in
@@ -244,6 +250,7 @@ class PaintLCM(QMainWindow):
         self.add_icon(res.find(f'img/crop{suf}.png'), self.capture_action)
         self.add_icon(res.find(f'img/add{suf}.png'), self.import_action)
         self.add_icon(res.find(f'img/switch{suf}.png'), self.toggle_action)
+        self.add_icon(res.find(f'img/movie{suf}.png'), self.sequence_action)
 
         # create connections
         self.create_connections()
@@ -268,6 +275,7 @@ class PaintLCM(QMainWindow):
         self.export_action.triggered.connect(self.save_output)
         self.exporthd_action.triggered.connect(self.save_output_hd)
         self.capture_action.triggered.connect(self.toggle_capture)
+        self.sequence_action.triggered.connect(self.record_sequence)
 
         # pushbuttons
         # self.actionLoad_IP_Adapter_reference_image.triggered.connect(self.define_ip_ref)
@@ -368,6 +376,37 @@ class PaintLCM(QMainWindow):
                 self.all_ip_styles.append(styles)
                 self.all_ip_prompts.append(prompts)
                 self.all_ip_paths.append(image_paths)
+
+    def record_sequence(self):
+        if self.sequence_action.isChecked():
+            # change flag
+            self.is_recording = True
+
+            # let the user choose an output folder
+            out_dir = str(QFileDialog.getExistingDirectory(self, "Select output_folder"))
+            while not os.path.isdir(out_dir):
+                QMessageBox.warning(self, "Warning",
+                                    "Oops! Not a folder!")
+                out_dir = str(QFileDialog.getExistingDirectory(self, "Select output_folder"))
+
+            self.record_folder = out_dir
+            self.inf_folder = os.path.join(self.record_folder, 'inference')
+            self.input_folder = os.path.join(self.record_folder, 'inputs')
+            # create the new subfolders to save frames
+            new_dir(self.inf_folder)
+            new_dir(self.input_folder)
+
+        else:
+            # change flag
+            self.is_recording = False
+            self.compile_video()
+            self.n_frame = 0
+
+    def compile_video(self):
+        path_inference = os.path.join(self.inf_folder, 'inference_video.mp4')
+        path_input = os.path.join(self.input_folder, 'input_video.mp4')
+        lcm.create_video(self.inf_folder, path_inference, 3)
+        lcm.create_video(self.input_folder, path_input, 3)
 
     def scale_scene(self, direction):
         # Get the current scene rect
@@ -866,6 +905,13 @@ class PaintLCM(QMainWindow):
             print('result saved')
 
             self.result_canvas.setPhoto(pixmap=QPixmap('result.png'))
+
+            # save images if recording flag
+            if self.is_recording:
+                self.n_frame += 1
+                frame_path = f"frame_{self.n_frame:04}.png"
+                self.out.save(os.path.join(self.inf_folder, frame_path))
+                self.im.save(os.path.join(self.input_folder, frame_path))
 
 
 def main(argv=None):

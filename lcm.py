@@ -13,7 +13,8 @@ import numpy as np
 
 
 """
-All credits to https://github.com/flowtyone/flowty-realtime-lcm-canvas!!
+Author: SDU (sdu@bbri.be)
+Part of the code was inspired from https://github.com/flowtyone/flowty-realtime-lcm-canvas!!
 """
 
 cache_path = path.join(path.dirname(path.abspath(__file__)), "models")
@@ -26,6 +27,24 @@ is_mac = platform == "darwin"
 model_list = ['Dreamshaper7', 'SD 1.5','Dreamshaper8','AbsoluteReality', 'RevAnimated', 'Protogen',  'SDXL 1.0']
 model_ids = [ "Lykon/dreamshaper-7", "runwayml/stable-diffusion-v1-5", "Lykon/dreamshaper-8","Lykon/absolute-reality-1.81", "danbrown/RevAnimated-v1-2-2", "darkstorm2150/Protogen_x5.8_Official_Release", "stabilityai/stable-diffusion-xl-base-1.0"]
 
+
+def create_video(image_folder, video_name, fps):
+    images = [img for img in os.listdir(image_folder) if img.endswith(".jpg") or img.endswith(".png")]
+    images.sort()  # Sort the images if needed
+
+    # Determine the width and height from the first image
+    frame = cv2.imread(os.path.join(image_folder, images[0]))
+    height, width, layers = frame.shape
+
+    # Initialize video writer
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # For mp4 videos
+    video = cv2.VideoWriter(video_name, fourcc, fps, (width, height))
+
+    for image in images:
+        video.write(cv2.imread(os.path.join(image_folder, image)))
+
+    cv2.destroyAllWindows()
+    video.release()
 
 def screen_to_lines(image,option):
     gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
