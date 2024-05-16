@@ -228,7 +228,8 @@ class PaintLCM(QMainWindow):
                                    self.export_action,
                                    self.exporthd_action,
                                    self.import_action,
-                                   self.sequence_action]
+                                   self.sequence_action,
+                                   self.process_action]
 
         # Create a snapshot of the toolbar with positions
         self.original_toolbar_state = [(action, self.toolBar.actions().index(action)) for action in
@@ -251,6 +252,7 @@ class PaintLCM(QMainWindow):
         self.add_icon(res.find(f'img/add{suf}.png'), self.import_action)
         self.add_icon(res.find(f'img/switch{suf}.png'), self.toggle_action)
         self.add_icon(res.find(f'img/movie{suf}.png'), self.sequence_action)
+        self.add_icon(res.find(f'img/magic2{suf}.png'), self.process_action)
 
         # create connections
         self.create_connections()
@@ -276,10 +278,11 @@ class PaintLCM(QMainWindow):
         self.exporthd_action.triggered.connect(self.save_output_hd)
         self.capture_action.triggered.connect(self.toggle_capture)
         self.sequence_action.triggered.connect(self.record_sequence)
+        self.process_action.triggered.connect(self.process_folder)
 
         # pushbuttons
         # self.actionLoad_IP_Adapter_reference_image.triggered.connect(self.define_ip_ref)
-        self.pushButton.clicked.connect(self.update_image)
+        self.pushButton.clicked.connect(self.manual_update)
         self.pushButton_example.clicked.connect(self.import_example)
         self.pushButton_plus.clicked.connect(lambda: self.scale_scene('plus'))
         self.pushButton_min.clicked.connect(lambda: self.scale_scene('min'))
@@ -336,6 +339,7 @@ class PaintLCM(QMainWindow):
         self.canvas.change_to_brush_cursor()
 
     # general functions __________________________________________
+
     def generate_ai_database(self):
         base_dir = BASE_DIR
 
@@ -379,6 +383,7 @@ class PaintLCM(QMainWindow):
 
     def record_sequence(self):
         if self.sequence_action.isChecked():
+            self.process_action.setEnabled(False)
             # change flag
             self.is_recording = True
 
@@ -397,6 +402,7 @@ class PaintLCM(QMainWindow):
             new_dir(self.input_folder)
 
         else:
+            self.process_action.setEnabled(True)
             # change flag
             self.is_recording = False
             self.compile_video()
@@ -455,6 +461,7 @@ class PaintLCM(QMainWindow):
             self.actions_visible = False
             self.toggle_action.setText("Expand toolset")
             self.status_bar.showMessage("Reduced Toolbar")
+            self.toggle_push_buttons()
         else:
             # Restore each action at its original position
             for action, position in sorted(self.original_toolbar_state, key=lambda x: x[1]):
@@ -463,6 +470,7 @@ class PaintLCM(QMainWindow):
             self.actions_visible = True
             self.toggle_action.setText("Reduce toolset")
             self.status_bar.showMessage("Full Toolbar")
+            self.toggle_push_buttons()
 
         self.toggle_dock_visibility()
         # self.toggle_push_buttons()
@@ -849,7 +857,43 @@ class PaintLCM(QMainWindow):
             print('update from brush stroke')
             self.update_image()
 
-    def update_image(self):
+    def process_folder(self):
+        in_dir = str(QFileDialog.getExistingDirectory(self, "Select input folder"))
+        while not os.path.isdir(in_dir):
+            QMessageBox.warning(self, "Warning",
+                                "Oops! Not a folder!")
+            in_dir = str(QFileDialog.getExistingDirectory(self, "Select output_folder"))
+
+        # output subfolder
+        existing_folders = len([name for name in os.listdir(in_dir) if os.path.isdir(os.path.join(in_dir, name))])
+        sub_dir = f"process{existing_folders}"
+        out_sub = os.path.join(in_dir, sub_dir)
+        new_dir(out_sub)
+
+        # list image files
+        file_list = os.listdir(in_dir)
+        img_list = []
+
+        for file in file_list:
+            if file.endswith('.png'):
+                img_list.append(os.path.join(in_dir,file))
+
+        print(img_list)
+
+        # process all images
+        for i, img in enumerate(img_list):
+            out_path = os.path.join(out_sub, f'out{i}.png')
+            self.update_image(show_output=False, save_path=out_path,get_image_from_canvas=False,input_img_path=img)
+
+    def manual_update(self):
+        self.update_image()
+
+    def update_image(self,
+                     show_output=True,
+                     save_path='result.png',
+                     get_image_from_canvas=True,
+                     input_img_path=''):
+
         if not self.initialization:
             # gather slider parameters:
             steps = self.step_slider.value()
@@ -875,24 +919,25 @@ class PaintLCM(QMainWindow):
             print(
                 f'here are the parameters \n steps: {steps}\n cfg: {cfg}\n ipstrength: {ip_strength}\n prompt: {self.p}')
 
-            print('capturing drawing')
+            if get_image_from_canvas:
+                print('capturing drawing')
+                self.im = scene_to_image(self.canvas)
 
-            self.im = scene_to_image(self.canvas)
+                # Check if image dimensions are correct
+                if self.im.size != (self.img_dim[0], self.img_dim[1]):
+                    print("Image dimensions are not good. Rescaling...")
+                    # Upscale the image to fit needed dimensions
+                    self.im = self.im.resize((self.img_dim[0], self.img_dim[1]), Image.BICUBIC)
 
-            # Check if image dimensions are correct
-            if self.im.size != (self.img_dim[0], self.img_dim[1]):
-                print("Image dimensions are not good. Rescaling...")
-                # Upscale the image to fit needed dimensions
-                self.im = self.im.resize((self.img_dim[0], self.img_dim[1]), Image.BICUBIC)
-
-            self.im.save('input.png')
+                self.im.save('input.png')
+                input_img_path = 'input.png'
 
             # capture painted image
             print('running inference')
             self.out = self.infer(
                 prompt=self.p,
                 negative_prompt=np,
-                image='input.png',
+                image=input_img_path,
                 num_inference_steps=steps,
                 guidance_scale=cfg,
                 seed=seed,
@@ -901,10 +946,10 @@ class PaintLCM(QMainWindow):
                 cn_strength=cn_strength
             )
 
-            self.out.save('result.png')
+            self.out.save(save_path)
             print('result saved')
-
-            self.result_canvas.setPhoto(pixmap=QPixmap('result.png'))
+            if show_output:
+                self.result_canvas.setPhoto(pixmap=QPixmap('result.png'))
 
             # save images if recording flag
             if self.is_recording:

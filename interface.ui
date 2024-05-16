@@ -112,6 +112,7 @@
    <addaction name="export_action"/>
    <addaction name="exporthd_action"/>
    <addaction name="sequence_action"/>
+   <addaction name="process_action"/>
   </widget>
   <widget class="QDockWidget" name="dockWidget">
    <property name="floating">
@@ -671,7 +672,18 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Drawing Movie</string>
+    <string>Record sequence</string>
+   </property>
+   <property name="toolTip">
+    <string>Record a drawing sequence (click again to stop)</string>
+   </property>
+  </action>
+  <action name="process_action">
+   <property name="text">
+    <string>Process folder</string>
+   </property>
+   <property name="toolTip">
+    <string>process all images in a folder with the current settings</string>
    </property>
   </action>
  </widget>
