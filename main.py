@@ -2,6 +2,7 @@
 Scribble Architect allows to transforms simple doodles into architectural works!
 Author: Samuel Dubois
 Any remark/suggestion: sdu@bbri.be
+V1.0
 """
 
 from PyQt6.QtCore import *
@@ -24,8 +25,8 @@ import gc
 # Params
 BASE_DIR = res.find('img/AI_ref_images_bo')
 LINE_METHODS = ['Sobel + BIL', 'Sobel Custom', 'Canny', 'Canny + L2', 'Canny + BIL', 'Canny + Blur', 'Random Forests', 'RF Custom',  'No processing']
-IMG_W = 512
-IMG_H = 512
+IMG_W = 1024
+IMG_H = 1024
 CAPTURE_INT = 1000  # milliseconds
 HD_RES = 1024 # resolution for upscale
 
