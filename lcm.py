@@ -24,8 +24,8 @@ os.environ["HF_HUB_CACHE"] = cache_path
 os.environ["HF_HOME"] = cache_path
 is_mac = platform == "darwin"
 
-model_list = ['Dreamshaper7', 'SD 1.5','Dreamshaper8','AbsoluteReality', 'RevAnimated', 'Protogen',  'SDXL 1.0']
-model_ids = [ "Lykon/dreamshaper-7", "runwayml/stable-diffusion-v1-5", "Lykon/dreamshaper-8","Lykon/absolute-reality-1.81", "danbrown/RevAnimated-v1-2-2", "darkstorm2150/Protogen_x5.8_Official_Release", "stabilityai/stable-diffusion-xl-base-1.0"]
+model_list = ['Dreamshaper8']
+model_ids = ["Lykon/dreamshaper-8"]
 
 
 def create_video(image_folder, video_name, fps):
@@ -184,15 +184,26 @@ def load_models(model_id="Lykon/dreamshaper-8", use_ip=True):
         "lllyasviel/sd-controlnet-scribble", torch_dtype=torch.float16
     )
 
-    pipe = StableDiffusionControlNetPipeline.from_pretrained(
-        model_id,
-        cache_dir=cache_path,
-        controlnet=controlnet,
-        controlnet_conditioning_scale=0.9,
-        torch_dtype=torch.float16,
-        variant="fp16",
-        safety_checker=None
-    )
+    if 'custom' in model_id:
+        pipe = StableDiffusionControlNetPipeline.from_single_file(
+            model_id,
+            cache_dir=cache_path,
+            controlnet=controlnet,
+            controlnet_conditioning_scale=0.9,
+            torch_dtype=torch.float16,
+            variant="fp16",
+            safety_checker=None
+        )
+    else:
+        pipe = StableDiffusionControlNetPipeline.from_pretrained(
+            model_id,
+            cache_dir=cache_path,
+            controlnet=controlnet,
+            controlnet_conditioning_scale=0.9,
+            torch_dtype=torch.float16,
+            variant="fp16",
+            safety_checker=None
+        )
 
     if use_ip:
         pipe.load_ip_adapter("h94/IP-Adapter", subfolder="models", weight_name=ip_adapter_name)
@@ -293,7 +304,7 @@ def tile_upscale(source_image, prompt, res):
                  height=condition_image.size[1],
                  strength=1,
                  generator=torch.manual_seed(0),
-                 num_inference_steps=40,
+                 num_inference_steps=25,
                  ).images[0]
 
     return image

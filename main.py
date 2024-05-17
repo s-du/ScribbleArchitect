@@ -9,8 +9,6 @@ from PyQt6.QtGui import *
 from PyQt6.QtWidgets import *
 from PyQt6 import uic
 
-import numpy as np
-
 import lcm
 import widgets as wid
 import resources as res
@@ -25,10 +23,10 @@ import gc
 BASE_DIR = res.find('img/AI_ref_images_bo')
 LINE_METHODS = ['Sobel + BIL', 'Sobel Custom', 'Canny', 'Canny + L2', 'Canny + BIL', 'Canny + Blur', 'Random Forests',
                 'RF Custom', 'No processing']
-IMG_W = 512
-IMG_H = 512
+IMG_W = 1024
+IMG_H = 768
 CAPTURE_INT = 1000  # milliseconds
-HD_RES = 1024  # resolution for upscale
+HD_RES = 2048  # resolution for upscale
 
 
 def new_dir(dir_path):
@@ -39,7 +37,6 @@ def new_dir(dir_path):
     """
     if not os.path.exists(dir_path):
         os.mkdir(dir_path)
-
 
 def scene_to_image(viewer):
     # Define the size of the image (same as the scene's bounding rect)
@@ -108,6 +105,7 @@ class PaintLCM(QMainWindow):
     def __init__(self, is_dark_theme):
         super().__init__()
 
+
         basepath = os.path.dirname(__file__)
         basename = 'interface'
         uifile = os.path.join(basepath, '%s.ui' % basename)
@@ -139,6 +137,15 @@ class PaintLCM(QMainWindow):
         # loads models
         self.models = model_list
         self.models_ids = model_ids
+
+        # read custom models
+        custom_models_file_list = os.listdir('custom_models')
+        for i,file in enumerate(custom_models_file_list):
+            if not file.endswith('txt'):
+                self.models.append(f'custom{i}:{file}')
+                self.models_ids.append(os.path.join('custom_models',file))
+
+        self.model_id = self.models_ids[0]
 
         # initial parameters
         self.infer = load_models()
@@ -214,6 +221,7 @@ class PaintLCM(QMainWindow):
         desired_icon_height = 80  # Adjust the height as needed
 
         self.comboBox_style.setIconSize(QSize(desired_icon_width, desired_icon_height))
+        self.comboBox_model.addItems(model_list)
 
         # ----------------------------------------------
         # Set textedits
@@ -295,12 +303,13 @@ class PaintLCM(QMainWindow):
         self.comboBox.currentIndexChanged.connect(self.change_type)
         self.comboBox_style.currentIndexChanged.connect(self.change_style)
         self.comboBox_lines.currentIndexChanged.connect(self.change_capture_option)
+        self.comboBox_model.currentIndexChanged.connect(self.change_model)
 
         # sliders
-        self.step_slider.valueChanged.connect(self.update_image)
-        self.cfg_slider.valueChanged.connect(self.update_image)
-        self.strength_slider.valueChanged.connect(self.update_image)
-        self.strength_slider_cn.valueChanged.connect(self.update_image)
+        self.step_slider.valueChanged.connect(self.manual_update)
+        self.cfg_slider.valueChanged.connect(self.manual_update)
+        self.strength_slider.valueChanged.connect(self.manual_update)
+        self.strength_slider_cn.valueChanged.connect(self.manual_update)
 
         # checkboxes
         self.checkBox_sp.stateChanged.connect(self.change_style)
@@ -311,7 +320,7 @@ class PaintLCM(QMainWindow):
         self.actionAdvanced_options.triggered.connect(self.toggle_dock_visibility)
 
         # seed edit
-        self.lineEdit_seed.textChanged.connect(self.update_image)
+        self.lineEdit_seed.textChanged.connect(self.manual_update)
 
         self.toggle_action.triggered.connect(self.toggle_tools)
 
@@ -540,11 +549,11 @@ class PaintLCM(QMainWindow):
             None, "Save Image", "", "PNG Image (*.png);;JPEG Image (*.jpg *.jpeg *.JPEG)"
         )
 
-        print('running upscale...')
-        out = lcm.tile_upscale(self.out, self.p, HD_RES)
-
         # Save the image if a file path was provided, using high-quality settings for JPEG
         if file_path:
+            print('running upscale...')
+            out = lcm.tile_upscale(self.out, self.p, HD_RES)
+            print('upscaling done!')
             if file_path.lower().endswith('.jpg') or file_path.lower().endswith('.jpeg'):
                 out.save(file_path, 'JPEG', 100)
             else:
@@ -814,6 +823,21 @@ class PaintLCM(QMainWindow):
         event.accept()
 
     # Inference parameters __________________________________________
+    def change_model(self):
+        idx = self.comboBox_model.currentIndex()
+        self.model_id = self.models_ids[idx]
+        print(f'chosen model:{self.model_id}')
+
+        # Attempt to free up memory by explicitly deleting the previous model and calling garbage collector
+        if hasattr(self, 'infer'):
+            del self.infer
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+
+        self.infer = load_models(model_id=self.model_id)
+        self.update_image()
+
     def change_type(self):
         self.load_style_combobox()
         self.change_predefined_prompts()

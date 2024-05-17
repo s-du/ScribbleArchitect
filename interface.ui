@@ -58,7 +58,7 @@
      <x>0</x>
      <y>0</y>
      <width>1563</width>
-     <height>24</height>
+     <height>20</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuExport">
@@ -224,13 +224,23 @@
      <item>
       <widget class="QTabWidget" name="tabWidget">
        <property name="currentIndex">
-        <number>2</number>
+        <number>0</number>
        </property>
        <widget class="QWidget" name="tab">
         <attribute name="title">
          <string>Prompt</string>
         </attribute>
         <layout class="QVBoxLayout" name="verticalLayout_11">
+         <item>
+          <widget class="QLabel" name="label_11">
+           <property name="text">
+            <string>Model</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QComboBox" name="comboBox_model"/>
+         </item>
          <item>
           <widget class="QLabel" name="label_6">
            <property name="text">

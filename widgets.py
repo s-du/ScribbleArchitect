@@ -530,6 +530,7 @@ class Canvas(QGraphicsView):
         elif event.type() == QEvent.Type.TabletRelease:
             if self.drawing:
                 self.drawing = False
+                self.endDrawing.emit()
                 # self.smooth_and_finalize_path()
 
         event.accept()
