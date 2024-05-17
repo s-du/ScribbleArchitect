@@ -3,6 +3,9 @@ from PyQt6.QtCore import *
 from PyQt6.QtGui import *
 from PyQt6.QtWidgets import *
 
+import numpy as np
+from scipy.interpolate import UnivariateSpline
+
 class TransparentBox(QWidget):
     def __init__(self, size):
         super().__init__()
@@ -54,6 +57,7 @@ class simpleCanvas(QGraphicsView):
 
         self._photo = QGraphicsPixmapItem()
         self.scene.addItem(self._photo)
+        self.pixmap = None
 
         self.setBackgroundBrush(QBrush(QColor(180, 180, 180)))
         self.setContentsMargins(0, 0, 0, 0)
@@ -89,6 +93,7 @@ class simpleCanvas(QGraphicsView):
                                          Qt.TransformationMode.SmoothTransformation)
 
             self._photo.setPixmap(scaledPixmap)
+            self.pixmap = scaledPixmap
 
 
 class Canvas(QGraphicsView):
@@ -110,12 +115,18 @@ class Canvas(QGraphicsView):
 
         self._photo = QGraphicsPixmapItem()
         self.scene.addItem(self._photo)
+        self.pixmap = None
+
+        self.drawing_layer = QPixmap(self.w, self.h)
+        self.drawing_layer.fill(Qt.GlobalColor.transparent)
 
         self.current_tool = 'brush'
         self.current_color = QColor(Qt.GlobalColor.black)
         self.brush_size = 10
         self.drawing = False
         self.last_point = None
+
+        self.has_background = False
 
         # bezier param
         self.create_bezier = False
@@ -178,6 +189,13 @@ class Canvas(QGraphicsView):
         self._photo = QGraphicsPixmapItem()
         self.scene.addItem(self._photo)
 
+        self.pixmap = None
+        self.has_background = False
+
+        # reset drawing zone
+        self.drawing_layer = QPixmap(self.w, self.h)
+        self.drawing_layer.fill(Qt.GlobalColor.transparent)
+
 
     def set_transparency(self, transparent):
         """ Set the transparency of the canvas. """
@@ -187,6 +205,8 @@ class Canvas(QGraphicsView):
             self.setWindowOpacity(1.0)  # Opaque
 
     def create_new_scene(self, w, h):
+        self.w = w
+        self.h = h
         self.scene.clear()
         self.scene = QGraphicsScene()
         self.setScene(self.scene)
@@ -195,15 +215,22 @@ class Canvas(QGraphicsView):
         self.setMaximumSize(w, h)
         self.resetTransform()
         self.add_empty_photo()
+
+        # reset drawing zone
+        self.drawing_layer = QPixmap(self.w, self.h)
+        self.drawing_layer.fill(Qt.GlobalColor.transparent)
+
         self.update()
 
     def add_empty_photo(self):
+        self.pixmap = None
         self._photo = QGraphicsPixmapItem()
         self.scene.addItem(self._photo)
 
     def setPhoto(self, pixmap=None):
         if pixmap and not pixmap.isNull():
             self._photo.setPixmap(pixmap)
+            self.pixmap = pixmap
 
     def change_to_brush_cursor(self):
         self.setCursor(self.brush_cur)
@@ -285,7 +312,7 @@ class Canvas(QGraphicsView):
 
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
-            if self.current_tool in ['brush', 'eraser']:
+            if self.current_tool in ['brush', 'eraser','pencil']:
                 self.drawing = True
                 self.create_bezier = False
                 self.start_point = self.mapToScene(event.pos())
@@ -345,8 +372,8 @@ class Canvas(QGraphicsView):
     def mouseMoveEvent(self, event):
         if event.buttons() == Qt.MouseButton.LeftButton and self.drawing:
             end_point = self.mapToScene(event.pos())
-            if self.current_tool in ['brush', 'eraser']:
-                if self.current_tool == 'brush':
+            if self.current_tool in ['brush', 'eraser','pencil']:
+                if self.current_tool in ['brush', 'pencil']:
                     self.draw_line(event.pos())
                 elif self.current_tool == 'eraser':
                     self.erase_line(event.pos())
@@ -384,19 +411,72 @@ class Canvas(QGraphicsView):
         elif self.current_tool == 'rectangle':
             self.temp_item.setRect(rect)
 
-    def draw_line(self, end_point):
-        path = QPainterPath(self.mapToScene(self.last_point))
-        path.lineTo(self.mapToScene(end_point))
-        pen = QPen(self.current_color, self.brush_size, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin)
-        self.scene.addPath(path, pen)
-        self.last_point = end_point
-
     def erase_line(self, end_point):
+        if self.last_point is None:
+            self.last_point = end_point  # Ensure this is a QPoint
+
         eraser_path = QPainterPath(self.mapToScene(self.last_point))
         eraser_path.lineTo(self.mapToScene(end_point))
-        eraser = QPen(Qt.GlobalColor.white, self.brush_size, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin)
-        self.scene.addPath(eraser_path, eraser)
+
+        # Draw on the drawing layer
+        painter = QPainter(self.drawing_layer)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        pen = QPen(Qt.GlobalColor.white, self.brush_size, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap,
+                   Qt.PenJoinStyle.RoundJoin)
+        painter.setPen(pen)
+        painter.drawPath(eraser_path)
+        painter.end()
+
+        # Composite the drawing layer over the background pixmap
+        self.update_composite_pixmap()
+
         self.last_point = end_point
+
+    def draw_line(self, end_point):
+        if self.last_point is None:
+            self.last_point = end_point  # Ensure this is a QPoint
+
+        path = QPainterPath(self.mapToScene(self.last_point))
+        path.lineTo(self.mapToScene(end_point))
+
+        # Draw on the drawing layer
+        painter = QPainter(self.drawing_layer)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        pen = QPen(Qt.GlobalColor.black, self.brush_size, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap,
+                   Qt.PenJoinStyle.RoundJoin)
+        painter.setPen(pen)
+        painter.drawPath(path)
+        painter.end()
+
+        # Composite the drawing layer over the background pixmap
+        self.update_composite_pixmap()
+
+        self.last_point = end_point
+
+    def update_composite_pixmap(self):
+        if not self.pixmap:
+            self._photo.setPixmap(self.drawing_layer)
+            return
+
+        # Create a new pixmap to hold the composite image
+        composite_pixmap = QPixmap(self.w, self.h)
+        composite_pixmap.fill(Qt.GlobalColor.transparent)
+
+        # Draw the background pixmap
+        painter = QPainter(composite_pixmap)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.drawPixmap(0, 0, self.pixmap)
+
+        # Set the composition mode to SourceOver
+        painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Multiply)
+
+        # Draw the drawing layer using the mask
+        painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Multiply)
+        painter.drawPixmap(0, 0, self.drawing_layer)
+
+        painter.end()
+
+        self._photo.setPixmap(composite_pixmap)
 
     def draw_ellipse(self, start_point, end_point):
         rect = QRectF(start_point, end_point)
@@ -425,9 +505,89 @@ class Canvas(QGraphicsView):
         self.brush_cur = self.create_circle_cursor(self.brush_size)
         self.change_to_brush_cursor()
 
+    def tabletEvent(self, event):
+        pos = event.position().toPoint()  # Convert QPointF to QPoint
+        pressure = event.pressure()  # Pressure is a float between 0.0 and 1.0
+
+        pen_size = self.set_pen_pressure(pressure)
+
+        if event.type() == QEvent.Type.TabletPress:
+            self.drawing = True
+            self.current_path = QPainterPath()
+            self.current_path.moveTo(self.mapToScene(pos))
+            self.last_pen_size = pen_size
+            self.create_new_segment(pen_size)
+
+        elif event.type() == QEvent.Type.TabletMove and self.drawing:
+            if self.last_pen_size != pen_size:
+                # Finish the current segment and start a new one
+                self.create_new_segment(pen_size)
+
+            # Continue the path with the new or existing pen size
+            self.current_path.lineTo(self.mapToScene(pos))
+            self.path_item.setPath(self.current_path)
+
+        elif event.type() == QEvent.Type.TabletRelease:
+            if self.drawing:
+                self.drawing = False
+                # self.smooth_and_finalize_path()
+
+        event.accept()
+
+    def create_new_segment(self, pen_size):
+        if self.current_path:
+            # Start a new path from the last point
+            new_path = QPainterPath()
+            new_path.moveTo(self.current_path.currentPosition())
+            self.current_path = new_path
+            self.path_item = self.scene.addPath(self.current_path,
+                                                QPen(self.current_color, pen_size, Qt.PenStyle.SolidLine,
+                                                     Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
+            self.last_pen_size = pen_size
+
+    def smooth_and_finalize_path(self):
+        if not self.current_path or self.current_path.isEmpty():
+            return
+
+        # Extract points from QPainterPath
+        points = []
+        num_elements = self.current_path.elementCount()
+        for i in range(num_elements):
+            elem = self.current_path.elementAt(i)
+            points.append((elem.x, elem.y))
+
+        if len(points) < 3:
+            return  # Not enough points to smooth
+
+        # Convert points to numpy array for processing
+        points = np.array(points)
+        x = points[:, 0]
+        y = points[:, 1]
+
+        # Fit spline to points
+        try:
+            spline = UnivariateSpline(x, y, s=len(points) * 1.5)  # Adjust smoothing factor based on your needs
+            xs = np.linspace(x.min(), x.max(), 50)  # More points for a smoother curve
+            ys = spline(xs)
+
+            # Create a new QPainterPath with the smoothed curve
+            smoothed_path = QPainterPath()
+            smoothed_path.moveTo(xs[0], ys[0])
+            for xi, yi in zip(xs[1:], ys[1:]):
+                smoothed_path.lineTo(xi, yi)
+
+            # Update the path item with the smoothed path
+            if self.path_item:
+                self.path_item.setPath(smoothed_path)
+
+        except Exception as e:
+            print("Error in smoothing:", e)
+
     def set_tool(self, tool):
         self.current_tool = tool
-        if tool == 'brush' or tool == 'eraser':
+        self.set_pen_color()
+
+        if tool in ['brush','eraser','pencil']:
             self.change_to_brush_cursor()
         else:
             print('cross cursor')
@@ -437,3 +597,25 @@ class Canvas(QGraphicsView):
         color = QColorDialog.getColor()
         if color.isValid():
             self.current_color = color
+
+    def set_pen_color(self):
+        if self.current_tool == 'brush':
+            self.current_color = QColor(Qt.GlobalColor.black)
+        elif self.current_tool == 'eraser':
+            self.current_color = QColor(Qt.GlobalColor.white)
+        elif self.current_tool == 'pencil':
+            self.current_color = QColor(45,45,45)
+        else:
+            self.current_color = Qt.GlobalColor.black
+
+    def set_pen_pressure(self, pressure):
+        if self.current_tool == 'brush':
+            pen_size = max(1, min(int(pressure * 50), 50))  # Dynamic pen size based on pressure
+        elif self.current_tool == 'eraser':
+            pen_size = max(1, min(int(pressure * 50), 50))  # Dynamic pen size based on pressure
+        elif self.current_tool == 'pencil':
+            pen_size = max(1, min(int(pressure * 15), 15))
+        else:
+            pen_size = max(1, min(int(pressure * 50), 50))
+
+        return pen_size

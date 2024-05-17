@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1563</width>
-    <height>1064</height>
+    <height>1045</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -111,6 +111,8 @@
    <addaction name="separator"/>
    <addaction name="export_action"/>
    <addaction name="exporthd_action"/>
+   <addaction name="sequence_action"/>
+   <addaction name="process_action"/>
   </widget>
   <widget class="QDockWidget" name="dockWidget">
    <property name="floating">
@@ -151,6 +153,13 @@
       <widget class="QComboBox" name="comboBox_style"/>
      </item>
      <item>
+      <widget class="QPushButton" name="pushButton_import_style">
+       <property name="text">
+        <string>Import custom style</string>
+       </property>
+      </widget>
+     </item>
+     <item>
       <widget class="QPushButton" name="pushButton_example">
        <property name="text">
         <string>Generate example</string>
@@ -174,6 +183,13 @@
       <widget class="QCheckBox" name="checkBox">
        <property name="text">
         <string>Live update</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QCheckBox" name="checkBox_float_draw">
+       <property name="text">
+        <string>Floating drawing zone</string>
        </property>
       </widget>
      </item>
@@ -208,7 +224,7 @@
      <item>
       <widget class="QTabWidget" name="tabWidget">
        <property name="currentIndex">
-        <number>0</number>
+        <number>2</number>
        </property>
        <widget class="QWidget" name="tab">
         <attribute name="title">
@@ -481,7 +497,7 @@
        </widget>
        <widget class="QWidget" name="tab_2">
         <attribute name="title">
-         <string>Screen Capture</string>
+         <string>Capture/Import</string>
         </attribute>
         <layout class="QVBoxLayout" name="verticalLayout_12">
          <item>
@@ -517,6 +533,48 @@
         </layout>
        </widget>
       </widget>
+     </item>
+    </layout>
+   </widget>
+  </widget>
+  <widget class="QDockWidget" name="dockWidget_3">
+   <property name="floating">
+    <bool>true</bool>
+   </property>
+   <property name="features">
+    <set>QDockWidget::DockWidgetFloatable|QDockWidget::DockWidgetMovable</set>
+   </property>
+   <property name="allowedAreas">
+    <set>Qt::NoDockWidgetArea</set>
+   </property>
+   <property name="windowTitle">
+    <string>Drawing zone</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>4</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents_3">
+    <layout class="QVBoxLayout" name="verticalLayout_5">
+     <item>
+      <layout class="QHBoxLayout" name="horizontalLayout_2">
+       <item>
+        <widget class="QPushButton" name="pushButton_plus">
+         <property name="text">
+          <string>+</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="pushButton_min">
+         <property name="text">
+          <string>-</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="horizontalLayout"/>
      </item>
     </layout>
    </widget>
@@ -607,6 +665,25 @@
    </property>
    <property name="toolTip">
     <string>Switch simple/full toolset</string>
+   </property>
+  </action>
+  <action name="sequence_action">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Record sequence</string>
+   </property>
+   <property name="toolTip">
+    <string>Record a drawing sequence (click again to stop)</string>
+   </property>
+  </action>
+  <action name="process_action">
+   <property name="text">
+    <string>Process folder</string>
+   </property>
+   <property name="toolTip">
+    <string>process all images in a folder with the current settings</string>
    </property>
   </action>
  </widget>
