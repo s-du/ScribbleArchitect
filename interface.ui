@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1563</width>
-    <height>1045</height>
+    <height>1178</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -102,9 +102,11 @@
    <addaction name="separator"/>
    <addaction name="pencil_action"/>
    <addaction name="brush_action"/>
+   <addaction name="spray_action"/>
+   <addaction name="palette_action"/>
    <addaction name="bezier_action"/>
    <addaction name="eraser_action"/>
-   <addaction name="color_action"/>
+   <addaction name="reset_action"/>
    <addaction name="separator"/>
    <addaction name="import_action"/>
    <addaction name="capture_action"/>
@@ -194,6 +196,13 @@
       </widget>
      </item>
      <item>
+      <widget class="QCheckBox" name="checkBox_hide">
+       <property name="text">
+        <string>Hide input zone</string>
+       </property>
+      </widget>
+     </item>
+     <item>
       <spacer name="verticalSpacer">
        <property name="orientation">
         <enum>Qt::Vertical</enum>
@@ -228,9 +237,12 @@
        </property>
        <widget class="QWidget" name="tab">
         <attribute name="title">
-         <string>Prompt</string>
+         <string>Model</string>
         </attribute>
         <layout class="QVBoxLayout" name="verticalLayout_11">
+         <item>
+          <widget class="QComboBox" name="comboBox_model"/>
+         </item>
          <item>
           <widget class="QLabel" name="label_6">
            <property name="text">
@@ -312,7 +324,7 @@
         <attribute name="title">
          <string>Sliders</string>
         </attribute>
-        <layout class="QVBoxLayout" name="verticalLayout_13">
+        <layout class="QVBoxLayout" name="verticalLayout_6">
          <item>
           <widget class="QLabel" name="label">
            <property name="text">
@@ -439,7 +451,7 @@
          <item>
           <widget class="QLabel" name="label_10">
            <property name="text">
-            <string>CN strength</string>
+            <string>CN strength line</string>
            </property>
            <property name="alignment">
             <set>Qt::AlignCenter</set>
@@ -448,6 +460,50 @@
          </item>
          <item>
           <widget class="QSlider" name="strength_slider_cn">
+           <property name="maximumSize">
+            <size>
+             <width>16777215</width>
+             <height>16777215</height>
+            </size>
+           </property>
+           <property name="minimum">
+            <number>1</number>
+           </property>
+           <property name="maximum">
+            <number>100</number>
+           </property>
+           <property name="singleStep">
+            <number>5</number>
+           </property>
+           <property name="value">
+            <number>80</number>
+           </property>
+           <property name="sliderPosition">
+            <number>80</number>
+           </property>
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="tickPosition">
+            <enum>QSlider::TicksBelow</enum>
+           </property>
+           <property name="tickInterval">
+            <number>5</number>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="label_11">
+           <property name="text">
+            <string>CN strength segmentation</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QSlider" name="strength_slider_cn_2">
            <property name="maximumSize">
             <size>
              <width>16777215</width>
@@ -497,16 +553,9 @@
        </widget>
        <widget class="QWidget" name="tab_2">
         <attribute name="title">
-         <string>Capture/Import</string>
+         <string>Line processing</string>
         </attribute>
         <layout class="QVBoxLayout" name="verticalLayout_12">
-         <item>
-          <widget class="QCheckBox" name="checkBox_hide">
-           <property name="text">
-            <string>Hide input zone</string>
-           </property>
-          </widget>
-         </item>
          <item>
           <widget class="QLabel" name="label_9">
            <property name="text">
@@ -533,48 +582,6 @@
         </layout>
        </widget>
       </widget>
-     </item>
-    </layout>
-   </widget>
-  </widget>
-  <widget class="QDockWidget" name="dockWidget_3">
-   <property name="floating">
-    <bool>true</bool>
-   </property>
-   <property name="features">
-    <set>QDockWidget::DockWidgetFloatable|QDockWidget::DockWidgetMovable</set>
-   </property>
-   <property name="allowedAreas">
-    <set>Qt::NoDockWidgetArea</set>
-   </property>
-   <property name="windowTitle">
-    <string>Drawing zone</string>
-   </property>
-   <attribute name="dockWidgetArea">
-    <number>4</number>
-   </attribute>
-   <widget class="QWidget" name="dockWidgetContents_3">
-    <layout class="QVBoxLayout" name="verticalLayout_5">
-     <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_2">
-       <item>
-        <widget class="QPushButton" name="pushButton_plus">
-         <property name="text">
-          <string>+</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QPushButton" name="pushButton_min">
-         <property name="text">
-          <string>-</string>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </item>
-     <item>
-      <layout class="QHBoxLayout" name="horizontalLayout"/>
      </item>
     </layout>
    </widget>
@@ -612,7 +619,7 @@
     <string>Export result</string>
    </property>
   </action>
-  <action name="color_action">
+  <action name="reset_action">
    <property name="text">
     <string>Start again!</string>
    </property>
@@ -684,6 +691,25 @@
    </property>
    <property name="toolTip">
     <string>process all images in a folder with the current settings</string>
+   </property>
+  </action>
+  <action name="spray_action">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Segm. Brush</string>
+   </property>
+   <property name="toolTip">
+    <string>Coloring Brush</string>
+   </property>
+  </action>
+  <action name="palette_action">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Choose object</string>
    </property>
   </action>
  </widget>

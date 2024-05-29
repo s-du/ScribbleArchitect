@@ -20,16 +20,37 @@ from PIL import Image, ImageOps
 import torch
 import os
 import gc
+import csv
 
 # Params
 BASE_DIR = res.find('img/AI_ref_images_bo')
-LINE_METHODS = ['Sobel + BIL', 'Sobel Custom', 'Canny', 'Canny + L2', 'Canny + BIL', 'Canny + Blur', 'Random Forests',
-                'RF Custom', 'No processing']
-IMG_W = 512
-IMG_H = 512
+IMG_W = 1024
+IMG_H = 1024
 CAPTURE_INT = 1000  # milliseconds
 HD_RES = 1024  # resolution for upscale
+SIMPLE_PROMPTS = ['A building architectural render',
+                  'A building artistic architectural drawing',
+                  'A city',
+                  'The cross section of a building',
+                  'A facade elevation',
+                  'A floor plan',
+                  'The drawing of an interior',
+                  'Interior architectural render',
+                  'Isometric building',
+                  'Ground plan landscape architect'
+                  ]
 
+EXAMPLE_PROMPTS = ['black and white coloring book illustration of a building, white background, lineart, inkscape, simple lines',
+                   'black and white coloring book illustration of a building, white background, lineart, inkscape, simple lines',
+                   'black and white coloring book illustration of a city, white background, lineart, inkscape, simple lines',
+                   'cross section of a building, children coloring book, white background, lineart, inkscape, simple lines',
+                   'a building facade in a children coloring book, coloring page, lineart, white background',
+                   'coloring page of a simple floor plan, lineart, orthographic, CAD',
+                   'coloring page of an interior, line art, white background',
+                   'coloring page of an interior, line art, white background',
+                   'isometric building in a coloring book, line art, white background, simplistic',
+                   'a site map, black and white, coloring book drawing, line art',
+                   'some architectural drawing']
 
 def new_dir(dir_path):
     """
@@ -45,38 +66,140 @@ def scene_to_image(viewer):
     # Define the size of the image (same as the scene's bounding rect)
     image = QImage(viewer.viewport().size(), QImage.Format.Format_ARGB32_Premultiplied)
 
-    if viewer.has_background:
-        # Remove the background from the scene temporarily
-        viewer._photo.setPixmap(viewer.drawing_layer)
+    # Render full image (without background)
+    viewer._photo.setPixmap(viewer.coloring_layer)
 
-        # Create a QPainter to render the scene into the QImage
-        painter = QPainter(image)
-        viewer.render(painter)
-        painter.end()
+    # Create a QPainter to render the scene into the QImage
+    painter = QPainter(image)
+    viewer.render(painter)
+    painter.end()
 
-        viewer.update_composite_pixmap()
-
-    else:
-        # Create a QPainter to render the scene into the QImage
-        painter = QPainter(image)
-        viewer.render(painter)
-        painter.end()
-
-    file_path = 'input.png'
+    file_path = 'color_input.png'
     image.save(file_path)
+    color_im = Image.open(file_path)
+
+    # Render only black lines
+    image_line = QImage(viewer.viewport().size(), QImage.Format.Format_ARGB32_Premultiplied)
+    viewer._photo.setPixmap(viewer.drawing_layer)
+
+    painter = QPainter(image_line)
+    viewer.render(painter)
+    painter.end()
+
+    file_path = 'line_input.png'
+    image_line.save(file_path)
 
     # Open the image and convert it to RGB mode
     pil_img = Image.open(file_path).convert('RGB')
 
-    # Invert the colors
+    # Invert the lines
     inverted_img = ImageOps.invert(pil_img)
 
+    # remove temp
+    os.remove(file_path)
+
     # Save the inverted image
-    inverted_file_path = 'inverted_input.png'
+    inverted_file_path = 'inv_line_input.png'
     inverted_img.save(inverted_file_path)
 
-    return inverted_img
+    # set viewer again
+    viewer.update_composite_pixmap()
 
+    return inverted_img, color_im # lines, colors
+
+class DrawingWindow(QMainWindow):
+    make_bigger = pyqtSignal()
+    make_smaller = pyqtSignal()
+    # Define a custom signal called 'closed'
+    closed = pyqtSignal()
+
+    def __init__(self, main_window):
+        super().__init__()
+        basepath = os.path.dirname(__file__)
+        basename = 'float_draw'
+        uifile = os.path.join(basepath, '%s.ui' % basename)
+        uic.loadUi(uifile, self)
+        self.setWindowTitle("Drawing Window")
+
+        # Store reference to main window
+        self.main_window = main_window
+
+
+        # Copy toolbar actions from the main window
+        self.toolbar = self.addToolBar("Secondary Toolbar")
+        self.action_list = ['Pencil','Brush','Eraser','Segm. Brush', 'Choose object','Start again!']
+        self.action_in_group = ['Pencil','Brush','Eraser','Segm. Brush']
+        self.copy_toolbar_actions(main_window)
+
+        self.pushButton_plus.clicked.connect(self.make_dr_big)
+        self.pushButton_min.clicked.connect(self.make_dr_small)
+
+    def make_dr_big(self):
+        self.make_bigger.emit()
+
+    def make_dr_small(self):
+        self.make_smaller.emit()
+    def copy_toolbar_actions(self, main_window):
+        action_group = QActionGroup(self)
+        action_group.setExclusive(True)
+
+        for action in main_window.toolBar.actions():
+            if action.text() in self.action_list:
+                if not action.text() in self.action_in_group:
+                    new_action = QAction(action.icon(), action.text(), self)
+                    new_action.triggered.connect(action.trigger)
+                    self.toolbar.addAction(new_action)
+                else:
+                    new_action = QAction(action.icon(), action.text(), self, checkable=True)
+                    new_action.triggered.connect(action.trigger)
+                    self.toolbar.addAction(new_action)
+                    action_group.addAction(new_action)
+
+    def closeEvent(self, event):
+        # Emit the 'closed' signal when the window is closed
+        self.closed.emit()
+        super().closeEvent(event)
+
+
+class ColorDialog(QDialog):
+    def __init__(self, parent=None):
+        super(ColorDialog, self).__init__(parent)
+        self.selected_color = None
+        self.setWindowTitle("Select a Color")
+
+        # Load the categories and colors from the CSV file
+        self.colors = self.load_colors_from_csv('resources/other/out_categories.csv')
+
+        # Create the grid layout
+        layout = QGridLayout()
+
+        # Create buttons and add them to the layout
+        for i, (name, color) in enumerate(self.colors.items()):
+            button = QPushButton()
+            button.setIcon(QIcon(f'resources/img/icon/cat_{name}.png'))  # Assuming icons are named and located appropriately
+            button.setIconSize(QPixmap(f'resources/img/icon/cat_{name}.png').size())
+            button.clicked.connect(lambda checked, color=color: self.select_color(color))
+            layout.addWidget(button, i // 3, i % 3)
+
+        self.setLayout(layout)
+
+    def load_colors_from_csv(self, file_path):
+        colors = {}
+        with open(file_path, newline='') as csvfile:
+            reader = csv.DictReader(csvfile)
+            for row in reader:
+                color_code = tuple(map(int, row["Color_Code (R,G,B)"].strip("()").split(',')))
+                name = row["Name"]
+                colors[name] = color_code
+        return colors
+
+    def select_color(self, color):
+        self.selected_color = color
+        print(f'selected color: {color}')
+        self.accept()
+
+    def get_selected_color(self):
+        return self.selected_color
 
 class CustomDialog(QDialog):
     def __init__(self):
@@ -122,6 +245,7 @@ class PaintLCM(QMainWindow):
         ag.addAction(self.eraser_action)
         ag.addAction(self.pencil_action)
         ag.addAction(self.bezier_action)
+        ag.addAction(self.spray_action)
 
         self.img_dim = (IMG_W, IMG_H)
         self.canvas = wid.Canvas(self.img_dim)
@@ -136,19 +260,30 @@ class PaintLCM(QMainWindow):
         self.setStatusBar(self.status_bar)
         self.status_bar.showMessage("Full Toolbar")
 
+        self.secondary_window = None
+
         # loads models
         self.models = model_list
         self.models_ids = model_ids
 
+        # read custom models
+        custom_models_file_list = os.listdir('custom_models')
+        for i, file in enumerate(custom_models_file_list):
+            if not file.endswith('txt'):
+                self.models.append(f'custom{i}:{file}')
+                self.models_ids.append(os.path.join('custom_models', file))
+
+        self.model_id = self.models_ids[0]
+
         # initial parameters
-        self.infer = load_models()
+        self.infer = load_models_multiple_cn()
         self.im = None
         self.original_parent = None
         self.gray_image = None
         self.resized_image = None
         self.actions_visible = True
         self.initialization = True
-        self.dockWidget_3.hide() # hide floating drawing zone
+        # self.dockWidget_3.hide() # hide floating drawing zone
 
         # prepare sequence recording
         self.is_recording = False
@@ -163,30 +298,8 @@ class PaintLCM(QMainWindow):
         self.timer = QTimer(self)
 
         # pre-img parameters
-        self.simple_prompts = ['A building architectural render',
-                               'A building artistic architectural drawing',
-                               'A city',
-                               'The cross section of a building',
-                               'A facade elevation',
-                               'A floor plan',
-                               'The drawing of an interior',
-                               'Interior architectural render',
-                               'Isometric building',
-                               'Cutaway of a building showing its interior, isometric',
-                               'Ground plan landscape architect'
-                               ]
-        self.example_paths = [res.find('img/examples/building_default.png'),
-                              res.find('img/examples/building_default.png'),
-                              res.find('img/examples/city_default.png'),
-                              res.find('img/examples/cross_default.png'),
-                              res.find('img/examples/facade_default.png'),
-                              res.find('img/examples/floorplan_default.png'),
-                              res.find('img/examples/interior_default.png'),
-                              res.find('img/examples/interior_default.png'),
-                              res.find('img/examples/iso_default.png'),
-                              res.find('img/examples/cutaway_default.png'),
-                              res.find('img/examples/facade_default.png')
-                              ]
+        self.simple_prompts = SIMPLE_PROMPTS
+        self.example_prompts = EXAMPLE_PROMPTS
 
         self.type_names = []  # To store the type names as read from folder names
         self.all_ip_styles = []  # To store style names
@@ -214,6 +327,7 @@ class PaintLCM(QMainWindow):
         desired_icon_height = 80  # Adjust the height as needed
 
         self.comboBox_style.setIconSize(QSize(desired_icon_width, desired_icon_height))
+        self.comboBox_model.addItems(model_list)
 
         # ----------------------------------------------
         # Set textedits
@@ -235,24 +349,20 @@ class PaintLCM(QMainWindow):
         self.original_toolbar_state = [(action, self.toolBar.actions().index(action)) for action in
                                        self.toolBar.actions() if action in self.toggleable_actions]
 
-        if is_dark_theme:
-            suf = '_white_tint'
-            suf2 = '_white'
-        else:
-            suf = ''
-
-        self.add_icon(res.find(f'img/brush{suf}.png'), self.brush_action)
-        self.add_icon(res.find(f'img/eraser{suf}.png'), self.eraser_action)
-        self.add_icon(res.find(f'img/pencil{suf}.png'), self.pencil_action)
-        self.add_icon(res.find(f'img/bezier{suf}.png'), self.bezier_action)
-        self.add_icon(res.find(f'img/mop{suf}.png'), self.color_action)
-        self.add_icon(res.find(f'img/save_as{suf}.png'), self.export_action)
-        self.add_icon(res.find(f'img/hd{suf}.png'), self.exporthd_action)
-        self.add_icon(res.find(f'img/crop{suf}.png'), self.capture_action)
-        self.add_icon(res.find(f'img/add{suf}.png'), self.import_action)
-        self.add_icon(res.find(f'img/switch{suf}.png'), self.toggle_action)
-        self.add_icon(res.find(f'img/movie{suf}.png'), self.sequence_action)
-        self.add_icon(res.find(f'img/magic2{suf}.png'), self.process_action)
+        self.add_icon(res.find(f'img/icon/brush.png'), self.brush_action)
+        self.add_icon(res.find(f'img/icon/brush_color.png'), self.spray_action)
+        self.add_icon(res.find(f'img/icon/eraser.png'), self.eraser_action)
+        self.add_icon(res.find(f'img/icon/pencil.png'), self.pencil_action)
+        self.add_icon(res.find(f'img/icon/bezier.png'), self.bezier_action)
+        self.add_icon(res.find(f'img/icon/mop.png'), self.reset_action)
+        self.add_icon(res.find(f'img/icon/save.png'), self.export_action)
+        self.add_icon(res.find(f'img/icon/hd.png'), self.exporthd_action)
+        self.add_icon(res.find(f'img/icon/crop.png'), self.capture_action)
+        self.add_icon(res.find(f'img/icon/image.png'), self.import_action)
+        self.add_icon(res.find(f'img/icon/toggle.png'), self.toggle_action)
+        self.add_icon(res.find(f'img/icon/movie.png'), self.sequence_action)
+        self.add_icon(res.find(f'img/icon/reprocess.png'), self.process_action)
+        self.add_icon(res.find(f'img/icon/palette.png'), self.palette_action)
 
         # create connections
         self.create_connections()
@@ -269,23 +379,24 @@ class PaintLCM(QMainWindow):
 
         # actions
         self.brush_action.triggered.connect(self.switch_to_brush)
+        self.spray_action.triggered.connect(self.switch_to_airbrush)
         self.eraser_action.triggered.connect(self.switch_to_eraser)
         self.pencil_action.triggered.connect(self.switch_to_pencil)
         self.bezier_action.triggered.connect(self.switch_to_bezier)
-        self.color_action.triggered.connect(self.reset_canvas)
+        self.reset_action.triggered.connect(self.reset_canvas)
         self.import_action.triggered.connect(self.import_image)
         self.export_action.triggered.connect(self.save_output)
         self.exporthd_action.triggered.connect(self.save_output_hd)
         self.capture_action.triggered.connect(self.toggle_capture)
         self.sequence_action.triggered.connect(self.record_sequence)
         self.process_action.triggered.connect(self.process_folder)
+        self.palette_action.triggered.connect(self.choose_color)
 
         # pushbuttons
         # self.actionLoad_IP_Adapter_reference_image.triggered.connect(self.define_ip_ref)
         self.pushButton.clicked.connect(self.manual_update)
-        self.pushButton_example.clicked.connect(self.import_example)
-        self.pushButton_plus.clicked.connect(lambda: self.scale_scene('plus'))
-        self.pushButton_min.clicked.connect(lambda: self.scale_scene('min'))
+        self.pushButton_example.clicked.connect(self.generate_example)
+
         self.pushButton_import_style.clicked.connect(self.import_custom_style)
 
         # when editing canvas --> update inference
@@ -295,17 +406,19 @@ class PaintLCM(QMainWindow):
         self.comboBox.currentIndexChanged.connect(self.change_type)
         self.comboBox_style.currentIndexChanged.connect(self.change_style)
         self.comboBox_lines.currentIndexChanged.connect(self.change_capture_option)
+        self.comboBox_model.currentIndexChanged.connect(self.change_model)
 
         # sliders
         self.step_slider.valueChanged.connect(self.update_image)
         self.cfg_slider.valueChanged.connect(self.update_image)
         self.strength_slider.valueChanged.connect(self.update_image)
         self.strength_slider_cn.valueChanged.connect(self.update_image)
+        self.strength_slider_cn_2.valueChanged.connect(self.update_image)
 
         # checkboxes
         self.checkBox_sp.stateChanged.connect(self.change_style)
         self.checkBox_hide.stateChanged.connect(self.toggle_canvas)
-        self.checkBox_float_draw.stateChanged.connect(self.toggle_drawing_zone)
+        self.checkBox_float_draw.stateChanged.connect(self.toggle_secondary_window)
 
         # other actions
         self.actionAdvanced_options.triggered.connect(self.toggle_dock_visibility)
@@ -315,23 +428,85 @@ class PaintLCM(QMainWindow):
 
         self.toggle_action.triggered.connect(self.toggle_tools)
 
+    # secondary drawing window
+    def toggle_secondary_window(self):
+        if self.checkBox_float_draw.isChecked():
+            self.open_secondary_window()
+        else:
+            self.secondary_window.close()
+            self.close_secondary_window()
+
+    def open_secondary_window(self):
+        if self.secondary_window is None:
+            self.secondary_window = DrawingWindow(self)
+
+        self.canvas.setParent(self.secondary_window)
+        self.secondary_window.horizontalLayout.addWidget(self.canvas)
+        self.secondary_window.closed.connect(self.close_secondary_window)
+        self.secondary_window.make_bigger.connect(lambda: self.scale_scene('plus'))
+        self.secondary_window.make_smaller.connect(lambda: self.scale_scene('min'))
+        self.secondary_window.show()
+
+    def close_secondary_window(self):
+        if self.checkBox_float_draw.isChecked():
+            self.checkBox_float_draw.setChecked(False)
+
+        # add drawing zone to principal window
+        self.horizontalLayout_4.removeWidget(self.result_canvas)
+        self.canvas.setParent(self)
+        self.horizontalLayout_4.addWidget(self.canvas)
+        self.horizontalLayout_4.addWidget(self.result_canvas)
+
+
     # drawing functions _________________________________________
+    def choose_color_old(self):
+        self.canvas.set_color()
+
+
+    def choose_color(self):
+        dialog = ColorDialog()
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            selected_color = dialog.get_selected_color()
+
+        self.canvas.current_color = QColor(*selected_color)
+
+
     def switch_to_pencil(self):
+        self.palette_action.setEnabled(False)
         self.canvas.terminate_bezier()
         self.canvas.brush_size = 3
         self.canvas.brush_cur = self.canvas.create_circle_cursor(3)
         self.canvas.set_tool('pencil')
+        self.canvas.active_layer = 0
+
+    def switch_to_airbrush(self):
+        # activate color palette
+
+        self.palette_action.setEnabled(True)
+        self.canvas.terminate_bezier()
+        self.canvas.brush_size = 15
+        self.canvas.brush_cur = self.canvas.create_circle_cursor(15)
+        self.canvas.set_tool('airbrush')
+        self.canvas.active_layer = 1 # activate coloring layer
+
+        self.choose_color()
+
 
     def switch_to_bezier(self):
+        self.palette_action.setEnabled(False)
         self.canvas.set_tool('bezier')
+        self.canvas.active_layer = 0
 
     def switch_to_brush(self):
+        self.palette_action.setEnabled(False)
         self.canvas.terminate_bezier()
         self.canvas.brush_size = 10
         self.canvas.brush_cur = self.canvas.create_circle_cursor(10)
         self.canvas.set_tool('brush')
+        self.canvas.active_layer = 0
 
     def switch_to_eraser(self):
+        self.palette_action.setEnabled(False)
         self.canvas.terminate_bezier()
         self.canvas.brush_size = 20
         self.canvas.set_tool('eraser')
@@ -396,10 +571,12 @@ class PaintLCM(QMainWindow):
 
             self.record_folder = out_dir
             self.inf_folder = os.path.join(self.record_folder, 'inference')
-            self.input_folder = os.path.join(self.record_folder, 'inputs')
+            self.input_line_folder = os.path.join(self.record_folder, 'inputs_lines')
+            self.input_seg_folder = os.path.join(self.record_folder, 'inputs_seg')
             # create the new subfolders to save frames
             new_dir(self.inf_folder)
-            new_dir(self.input_folder)
+            new_dir(self.input_line_folder)
+            new_dir(self.input_seg_folder)
 
         else:
             self.process_action.setEnabled(True)
@@ -410,9 +587,11 @@ class PaintLCM(QMainWindow):
 
     def compile_video(self):
         path_inference = os.path.join(self.inf_folder, 'inference_video.mp4')
-        path_input = os.path.join(self.input_folder, 'input_video.mp4')
+        path_line_input = os.path.join(self.input_line_folder, 'input_line_video.mp4')
+        path_seg_input = os.path.join(self.input_seg_folder, 'input_seg_video.mp4')
         lcm.create_video(self.inf_folder, path_inference, 3)
-        lcm.create_video(self.input_folder, path_input, 3)
+        lcm.create_video(self.input_line_folder, path_line_input, 3)
+        lcm.create_video(self.input_seg_folder, path_seg_input, 3)
 
     def scale_scene(self, direction):
         # Get the current scene rect
@@ -430,24 +609,7 @@ class PaintLCM(QMainWindow):
         # Scale the dimensions
         new_w, new_h = int(w * factor), int(h * factor)
 
-        # Create a QImage of the current scene rect size
-        image = QImage(w, h, QImage.Format.Format_ARGB32)
-        image.fill(Qt.GlobalColor.transparent)  # Ensure the image has a transparent background
-        painter = QPainter(image)
-
-        # Render the entire scene into the QImage
-        self.canvas.scene.render(painter, QRectF(0, 0, w, h), rect)
-        painter.end()
-
-        pixmap = QPixmap.fromImage(image)
-
-        # Scale the pixmap
-        scaled_pixmap = pixmap.scaled(new_w, new_h, Qt.AspectRatioMode.KeepAspectRatio,
-                                      Qt.TransformationMode.SmoothTransformation)
-
-        # Update the scene with new dimensions and set the scaled pixmap
-        self.canvas.create_new_scene(new_w, new_h)
-        self.canvas.setPhoto(scaled_pixmap)
+        self.canvas.scale_canvas(new_w, new_h)
 
     def snapshot_toolbar(self):
         """ Capture the current state of the toolbar. """
@@ -481,16 +643,7 @@ class PaintLCM(QMainWindow):
         else:
             self.dockWidget_2.show()
 
-    def toggle_drawing_zone(self):
-        if self.dockWidget_3.isVisible():
-            self.dockWidget_3.hide()
-            self.horizontalLayout_4.removeWidget(self.result_canvas)
-            self.horizontalLayout_4.addWidget(self.canvas)
-            self.horizontalLayout_4.addWidget(self.result_canvas)
-        else:
-            self.dockWidget_3.show()
-            self.horizontalLayout_4.removeWidget(self.canvas)
-            self.horizontalLayout.addWidget(self.canvas)
+
 
     def toggle_push_buttons(self):
         if self.pushButton_example.isVisible():
@@ -552,18 +705,43 @@ class PaintLCM(QMainWindow):
 
         print(f'result saved: {file_path}')
 
-    def import_example(self):
+    def generate_example(self):
+        # create blank image
+        white_image = Image.new("RGB", (self.img_dim[0], self.img_dim[1]), "white")
+        # load prompt
         idx = self.comboBox.currentIndex()
-        img_path = self.example_paths[idx]
-        pixmap = QPixmap(img_path)
-        pixmap = pixmap.scaled(self.img_dim[0], self.img_dim[1], Qt.AspectRatioMode.KeepAspectRatio,
-                               Qt.TransformationMode.SmoothTransformation)
+        prompt = self.example_prompts[idx]
+        negative_prompt = 'realistic, colors, detailed, writing, text'
+        out = self.infer(
+            prompt,
+            negative_prompt,
+            [white_image, white_image],
+            num_inference_steps=7,
+            guidance_scale=0.7,
+            strength=0.9,
+            seed=random.randrange(0, 2 ** 63),
+            ip_scale=0.2,
+            ip_image_to_use=res.find('img/examples/city_default.png'),
+            cn_strength=[0, 0],
+        )
 
-        self.canvas.clean_scene()
-        self.canvas.setPhoto(pixmap)
+        # Convert the RGB image to grayscale
+        grayscale_image = out.convert("L")
+        optimal_threshold = otsu_threshold(grayscale_image)
+        print(f"Optimal threshold: {optimal_threshold}")
+
+        # Convert the grayscale image to binary (black and white) using a threshold
+        threshold = optimal_threshold  # You can adjust the threshold as needed
+        binary_image = grayscale_image.point(lambda x: 0 if x < threshold else 255, '1')
+        binary_image.save('example.png')
+        # save pixmap in drawing zone
+        self.canvas.set_image_in_drawing(QPixmap("example.png"))
+
+        # update render
+        self.update_image()
 
     def find_custom_index(self):
-        custom_text = "custom"
+        custom_text = "user"
         for index in range(self.comboBox.count()):
             if custom_text in self.comboBox.itemText(index):
                 return index
@@ -594,11 +772,11 @@ class PaintLCM(QMainWindow):
                 if name and prompt:
                     # save image and text to database
                     image_name = f"{name}.png"
-                    dest_path = os.path.join(BASE_DIR, 'custom', image_name)
+                    dest_path = os.path.join(BASE_DIR, 'user', image_name)
                     os.makedirs(os.path.dirname(dest_path), exist_ok=True)
                     cv2.imwrite(dest_path, resized_image)
 
-                    text_file_path = os.path.join(BASE_DIR, 'custom', f"{name}.txt")
+                    text_file_path = os.path.join(BASE_DIR, 'user', f"{name}.txt")
                     with open(text_file_path, 'w') as text_file:
                         text_file.write(prompt)
 
@@ -630,7 +808,7 @@ class PaintLCM(QMainWindow):
         file_name, _ = QFileDialog.getOpenFileName(self, "Select Image File", "",
                                                    "Image Files (*.png *.jpg *.jpeg *.bmp *.gif)")
         if file_name:
-            # resize image to maximum dimension
+            # Resize image to maximum dimension
             image = cv2.imread(file_name)
             max_dimension = max(self.img_dim[0], self.img_dim[1])
             height, width = image.shape[:2]
@@ -642,16 +820,16 @@ class PaintLCM(QMainWindow):
             else:
                 resized_image = image
 
-            # compile new size parameters
+            # Compile new size parameters
             self.img_dim = (int(width * scaling_factor), int(height * scaling_factor))
 
             self.result_canvas.create_new_scene(self.img_dim[0], self.img_dim[1])
             self.canvas.create_new_scene(self.img_dim[0], self.img_dim[1])
 
-            # update capture window
+            # Update capture window
             self.box = wid.TransparentBox(self.img_dim)
 
-            # convert to grayscale
+            # Convert to grayscale
             self.resized_image = resized_image
             self.temp_file_path = 'temp_resized_image.png'
             cv2.imwrite(self.temp_file_path, resized_image)
@@ -661,22 +839,25 @@ class PaintLCM(QMainWindow):
             msg_box.setIcon(QMessageBox.Icon.Question)
             msg_box.setWindowTitle('Import Image')
             msg_box.setText('How would you like to import the image?')
-            msg_box.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
 
-            # Retrieve buttons and set their text
-            yes_button = msg_box.button(QMessageBox.StandardButton.Yes)
-            no_button = msg_box.button(QMessageBox.StandardButton.No)
-            yes_button.setText('As support for drawing')
-            no_button.setText('For direct processing')
+            # Add buttons
+            support_button = msg_box.addButton('As support for drawing', QMessageBox.ButtonRole.YesRole)
+            line_button = msg_box.addButton('For lines layer', QMessageBox.ButtonRole.NoRole)
+            segmentation_button = msg_box.addButton('For segmentation layer', QMessageBox.ButtonRole.HelpRole)
+            segmentation_lines_button = msg_box.addButton('For segmentation and line layers', QMessageBox.ButtonRole.HelpRole)
 
             # Execute the message box and get the user's choice
-            choice = msg_box.exec()
+            msg_box.exec()
 
             # Call the appropriate method based on the user's choice
-            if choice == QMessageBox.StandardButton.Yes:
+            if msg_box.clickedButton() == support_button:
                 self.import_support_image()
-            else:
+            elif msg_box.clickedButton() == line_button:
                 self.import_line_image()
+            elif msg_box.clickedButton() == segmentation_button:
+                self.import_segmentation_image()
+            elif msg_box.clickedButton() == segmentation_lines_button:
+                self.import_segmentation_lines_image()
 
     def import_support_image(self):
         image = cv2.imread(self.temp_file_path, cv2.IMREAD_UNCHANGED)
@@ -700,7 +881,7 @@ class PaintLCM(QMainWindow):
 
         self.canvas.has_background = True
 
-    def import_line_image(self):
+    def import_line_image(self, update_inf = True):
         # line operation
         processed_image = lcm.screen_to_lines(self.resized_image, self.line_mode)
 
@@ -708,10 +889,33 @@ class PaintLCM(QMainWindow):
         final_pixmap = self.convertMatToQPixmap(processed_image)
 
         # save pixmap in drawing zone
-        self.canvas.setPhoto(final_pixmap)
+        self.canvas.set_image_in_drawing(final_pixmap)
+
+        # update render
+        if update_inf:
+            self.update_image()
+
+    def import_segmentation_image(self):
+        # line operation
+        processed_image = lcm.img_to_seg(self.resized_image)
+        # Convert the color segmentation array to a PIL image
+        pil_image = Image.fromarray(processed_image)
+
+        # Save the PIL image to the specified path
+        pil_image.save('seg_result.png')
+
+        # Convert the inverted image back to QPixmap
+        final_pixmap = QPixmap('seg_result.png')
+
+        # save pixmap in drawing zone
+        self.canvas.set_image_in_color_layer(final_pixmap)
 
         # update render
         self.update_image()
+
+    def import_segmentation_lines_image(self):
+        self.import_line_image()
+        self.import_segmentation_image()
 
     # Screen capture __________________________________________
     def toggle_capture(self):
@@ -754,13 +958,7 @@ class PaintLCM(QMainWindow):
             self.resized_image = temp_image
 
             # convert to edge image
-            processed_image = lcm.screen_to_lines(temp_image, self.line_mode)
-
-            # Convert the inverted image back to QPixmap
-            final_pixmap = self.convertMatToQPixmap(processed_image)
-
-            # Set the processed image on the canvas
-            self.canvas.setPhoto(final_pixmap)
+            self.import_line_image(update_inf = False)
 
         # Should it update continuously
         if self.checkBox.isChecked():
@@ -773,8 +971,11 @@ class PaintLCM(QMainWindow):
         # Convert the inverted image back to QPixmap
         final_pixmap = self.convertMatToQPixmap(processed_image)
 
+        # recompose drawing
+        self.canvas.remove_stored_pixmap()
+
         # Set the processed image on the canvas
-        self.canvas.setPhoto(final_pixmap)
+        self.canvas.set_image_in_drawing(final_pixmap)
         self.update_image()
 
     def change_capture_option(self):
@@ -814,6 +1015,21 @@ class PaintLCM(QMainWindow):
         event.accept()
 
     # Inference parameters __________________________________________
+    def change_model(self):
+        idx = self.comboBox_model.currentIndex()
+        self.model_id = self.models_ids[idx]
+        print(f'chosen model:{self.model_id}')
+
+        # Attempt to free up memory by explicitly deleting the previous model and calling garbage collector
+        if hasattr(self, 'infer'):
+            del self.infer
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+
+        self.infer = load_models_multiple_cn(model_id=self.model_id)
+        self.update_image()
+
     def change_type(self):
         self.load_style_combobox()
         self.change_predefined_prompts()
@@ -901,6 +1117,8 @@ class PaintLCM(QMainWindow):
 
             ip_strength = self.strength_slider.value() / 100
             cn_strength = self.strength_slider_cn.value() / 100
+            cn_strength_2 = self.strength_slider_cn_2.value() / 100
+            cn_strengths = [cn_strength, cn_strength_2]
 
             # get prompts
             self.p = self.textEdit.toPlainText()
@@ -921,29 +1139,46 @@ class PaintLCM(QMainWindow):
 
             if get_image_from_canvas:
                 print('capturing drawing')
-                self.im = scene_to_image(self.canvas)
+                self.im, self.color_im = scene_to_image(self.canvas)
 
                 # Check if image dimensions are correct
                 if self.im.size != (self.img_dim[0], self.img_dim[1]):
                     print("Image dimensions are not good. Rescaling...")
                     # Upscale the image to fit needed dimensions
                     self.im = self.im.resize((self.img_dim[0], self.img_dim[1]), Image.BICUBIC)
+                    self.color_im = self.color_im.resize((self.img_dim[0], self.img_dim[1]), Image.BICUBIC)
 
-                self.im.save('input.png')
-                input_img_path = 'input.png'
+                self.im.save('inv_line_input.png')
+                self.color_im.save('color_input.png')
+                input_img_path = 'inv_line_input.png'
+                input_color_path = 'color_input.png' # to use for segmentation
 
             # capture painted image
             print('running inference')
+            """
             self.out = self.infer(
                 prompt=self.p,
                 negative_prompt=np,
-                image=input_img_path,
+                image=input_color_path,
+                cn_image=input_img_path,
                 num_inference_steps=steps,
                 guidance_scale=cfg,
                 seed=seed,
                 ip_scale=ip_strength,
                 ip_image_to_use=ip_img_ref,
                 cn_strength=cn_strength
+            )
+            """
+            self.out = self.infer(
+                prompt=self.p,
+                negative_prompt=np,
+                images=[Image.open(input_img_path), Image.open(input_color_path)],
+                num_inference_steps=steps,
+                guidance_scale=cfg,
+                seed=seed,
+                ip_scale=ip_strength,
+                ip_image_to_use=ip_img_ref,
+                cn_strength=cn_strengths
             )
 
             self.out.save(save_path)
@@ -956,7 +1191,8 @@ class PaintLCM(QMainWindow):
                 self.n_frame += 1
                 frame_path = f"frame_{self.n_frame:04}.png"
                 self.out.save(os.path.join(self.inf_folder, frame_path))
-                self.im.save(os.path.join(self.input_folder, frame_path))
+                self.im.save(os.path.join(self.input_line_folder, frame_path))
+                self.color_im.save((os.path.join(self.input_seg_folder, frame_path)))
 
 
 def main(argv=None):
