@@ -1,8 +1,8 @@
 ![example](docs/scribble_banner2.png)
 
->**Line drawing, style transfer and upscale with Stable Diffusion!**
+>**Line drawing, segmentation, style transfer and upscale with Stable Diffusion!**
 
-This GUI allows generating images from simple brush strokes, or Bezier curves, in realtime. The functions have been designed primarily for use in architecture, and for sketching in the early stages of a project. It uses Stable Diffusion and ControlNet as AI backbone for the generative process. IP Adapter support is included, as well as a large library of predefined styles! Each reference image allows to transfer a specific style to your black and white line work. An upscale function was also added, to export results in high resolution. It uses a ControlNet upscaler.
+This GUI allows generating images from simple brush strokes, or Bezier curves, in realtime. The functions have been designed primarily for use in architecture, and for sketching in the early stages of a project. It uses Stable Diffusion and ControlNet as AI backbone for the generative process. IP Adapter support is included, as well as a large library of predefined styles! Each reference image allows to transfer a specific style to your black and white line work. An upscale function was also added, to export results in high resolution. It uses a ControlNet tile.
 
 <p align="center">
     <img src="docs/tablet2.png" width="600" alt="Tablet support" style="display: block; margin: auto auto;">
@@ -11,10 +11,15 @@ This GUI allows generating images from simple brush strokes, or Bezier curves, i
 
 
 Many new functions added:
+- Generate random scribbles
+- Draw segmentation zone for specific objects (sky, building, windows, ...)
 - Tablet drawing support (touch screen, Ipad, ...)
 - Custom style import
 - Draw over background model
-- Import image (and edge detection as input)
+- Import image for different purposes
+   - As a support for drawing
+   - As scribble
+   - As segmentation zone
 - ...
 
 <p align="center">
@@ -93,9 +98,9 @@ https://github.com/s-du/ScribbleArchitect/assets/53427781/d827b763-f7b4-4e1d-b0e
 
 
 ## Options
-The SD model can be adapted in the lcm.py file. Live drawing requires a strong GPU, I would advice to reduce image size (in main.py) if too laggy! Image upscale is really GPU intensive...
+Live drawing requires a strong GPU, I would advice to reduce image size (in main.py) if too laggy! Image upscale is really GPU intensive...
 
 ## Included models
-By default, the app uses Dreamshaper (https://huggingface.co/Lykon/dreamshaper-8)
+By default, the app uses Dreamshaper (https://huggingface.co/Lykon/dreamshaper-8). Custom models can be added in the dedicated folder ('custom_models'). Any SD1.5 checkpoint should work. 
 
 ![compil](docs/s_archi_compil.png)
