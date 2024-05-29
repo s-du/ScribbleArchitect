@@ -9,7 +9,6 @@ This GUI allows generating images from simple brush strokes, or Bezier curves, i
 </p>
 
 
-
 Many new functions added:
 - Generate random scribbles
 - Draw segmentation zone for specific objects (sky, building, windows, ...)
@@ -62,10 +61,18 @@ pip3 install torch torchvision torchaudio --index-url https://download.pytorch.o
 - Launch main.py (the first launch can be long due to the models installation process!)
 
 ## Usage
-Choose a 'type' of architectural design (exterior render, facade elevation, interior render, ...) and a style. On the left zone, paint with a brush and see the proposed image adapting live (a checkbox allows to disable live inference). If you lack inspiration, or for testing purpose, a example line drawing can be generated automatically.
-Mouse wheel to adapt cursor size. 
+<p align="center">
+    <img src="docs/composition.png" width="600" alt="Tablet support" style="display: block; margin: auto auto;">
+</p>
 
-We added a screen capture function. it creates a capture box (blue border) that can be dragged around. Once happy with the capture, click again on the tool to desactivate it. It allows to work with powerful tools as input (Adobe Illustrator, Inkscape, ...).
+Choose an architectural design 'type' (exterior rendering, façade elevation, interior rendering, ...) and a style. On the left, you'll find the drawing area. You can add either black lines to define the important lines of your drawing, or colored zones (a semantic map) to define where specific objects should be placed (a tree, a window, etc.). A specific color code is associated with each type of object. You don't have to worry about choosing the right color, as the graphical interface allows you to directly select the object to be drawn. 
+The drawing process itself is completely standard. Choose your tool and draw! (or delete). You'll see the proposed image adapt live (a checkbox allows you to disable live inference). 
+
+If you lack inspiration, or for testing purpose, a example scribble drawing can be generated automatically.
+
+Images can also be imported to automatically generate scribbles and/or segmentation.
+
+We also added a screen capture function. it creates a capture box (blue border) that can be dragged around and will generate scribbles based on the captured zone. Once happy with the capture, click again on the tool to desactivate it. It allows to work with powerful tools as input (Adobe Illustrator, Inkscape, ...).
 
 <p align="center">
     <img src="docs/anim5.gif" width="800" alt="Description" style="display: block; margin: 0 auto;">
