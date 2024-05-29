@@ -2,22 +2,19 @@
 Author: SDU (sdu@bbri.be)
 Part of the code was inspired from https://github.com/flowtyone/flowty-realtime-lcm-canvas!!
 """
-
 import os
 import random
+import time
 from os import path
 from contextlib import nullcontext
-import time
 from sys import platform
+
 import torch
 from torch import nn
 import cv2
-import resources as res
-import torch
-from PIL import Image
 import numpy as np
+from PIL import Image
 
-from transformers import AutoImageProcessor, UperNetForSemanticSegmentation
 
 cache_path = path.join(path.dirname(path.abspath(__file__)), "models")
 
@@ -232,6 +229,8 @@ def otsu_threshold(image):
 
     return optimal_threshold
 def img_to_seg(image):
+    from transformers import AutoImageProcessor, UperNetForSemanticSegmentation
+
     # Load the pre-trained models
     image_processor = AutoImageProcessor.from_pretrained("openmmlab/upernet-convnext-small")
     model = UperNetForSemanticSegmentation.from_pretrained("openmmlab/upernet-convnext-small")

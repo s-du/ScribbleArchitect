@@ -3,24 +3,26 @@ Scribble Architect allows to transforms simple doodles into architectural works!
 Author: Samuel Dubois
 Any remark/suggestion: sdu@bbri.be
 """
+import csv
+import gc
+import logging
+import os
+import sys
+import traceback
 
-from PyQt6.QtCore import *
-from PyQt6.QtGui import *
-from PyQt6.QtWidgets import *
-from PyQt6 import uic
-
-import lcm
-import widgets as wid
-from lcm import *
 from PIL import Image, ImageOps
 
 import torch
-import os
-import gc
-import csv
-import logging
-import traceback
-import sys
+
+from PyQt6 import uic
+from PyQt6.QtCore import *
+from PyQt6.QtGui import *
+from PyQt6.QtWidgets import *
+
+import lcm
+from lcm import *
+import widgets as wid
+import resources as res
 
 # basic logger functionality
 log = logging.getLogger(__name__)
@@ -45,17 +47,19 @@ SIMPLE_PROMPTS = ['A building architectural render',
                   'Ground plan landscape architect'
                   ]
 
-EXAMPLE_PROMPTS = ['black and white coloring book illustration of a building, white background, lineart, inkscape, simple lines',
-                   'black and white coloring book illustration of a building, white background, lineart, inkscape, simple lines',
-                   'black and white coloring book illustration of a city, white background, lineart, inkscape, simple lines',
-                   'cross section of a building, children coloring book, white background, lineart, inkscape, simple lines',
-                   'a building facade in a children coloring book, coloring page, lineart, white background',
-                   'coloring page of a simple floor plan, lineart, orthographic, CAD',
-                   'coloring page of an interior, line art, white background',
-                   'coloring page of an interior, line art, white background',
-                   'isometric building in a coloring book, line art, white background, simplistic',
-                   'a site map, black and white, coloring book drawing, line art',
-                   'some architectural drawing']
+EXAMPLE_PROMPTS = [
+    'black and white coloring book illustration of a building, white background, lineart, inkscape, simple lines',
+    'black and white coloring book illustration of a building, white background, lineart, inkscape, simple lines',
+    'black and white coloring book illustration of a city, white background, lineart, inkscape, simple lines',
+    'cross section of a building, children coloring book, white background, lineart, inkscape, simple lines',
+    'a building facade in a children coloring book, coloring page, lineart, white background',
+    'coloring page of a simple floor plan, lineart, orthographic, CAD',
+    'coloring page of an interior, line art, white background',
+    'coloring page of an interior, line art, white background',
+    'isometric building in a coloring book, line art, white background, simplistic',
+    'a site map, black and white, coloring book drawing, line art',
+    'some architectural drawing']
+
 
 def new_dir(dir_path):
     """
@@ -110,7 +114,8 @@ def scene_to_image(viewer):
     # set viewer again
     viewer.update_composite_pixmap()
 
-    return inverted_img, color_im # lines, colors
+    return inverted_img, color_im  # lines, colors
+
 
 class DrawingWindow(QMainWindow):
     make_bigger = pyqtSignal()
@@ -129,11 +134,10 @@ class DrawingWindow(QMainWindow):
         # Store reference to main window
         self.main_window = main_window
 
-
         # Copy toolbar actions from the main window
         self.toolbar = self.addToolBar("Secondary Toolbar")
-        self.action_list = ['Pencil','Brush','Eraser','Segm. Brush', 'Choose object','Start again!']
-        self.action_in_group = ['Pencil','Brush','Eraser','Segm. Brush']
+        self.action_list = ['Pencil', 'Brush', 'Eraser', 'Segm. Brush', 'Choose object', 'Start again!']
+        self.action_in_group = ['Pencil', 'Brush', 'Eraser', 'Segm. Brush']
         self.copy_toolbar_actions(main_window)
 
         self.pushButton_plus.clicked.connect(self.make_dr_big)
@@ -144,6 +148,7 @@ class DrawingWindow(QMainWindow):
 
     def make_dr_small(self):
         self.make_smaller.emit()
+
     def copy_toolbar_actions(self, main_window):
         action_group = QActionGroup(self)
         action_group.setExclusive(True)
@@ -181,7 +186,8 @@ class ColorDialog(QDialog):
         # Create buttons and add them to the layout
         for i, (name, color) in enumerate(self.colors.items()):
             button = QPushButton()
-            button.setIcon(QIcon(f'resources/img/icon/cat_{name}.png'))  # Assuming icons are named and located appropriately
+            button.setIcon(
+                QIcon(f'resources/img/icon/cat_{name}.png'))  # Assuming icons are named and located appropriately
             button.setIconSize(QPixmap(f'resources/img/icon/cat_{name}.png').size())
             button.clicked.connect(lambda checked, color=color: self.select_color(color))
             layout.addWidget(button, i // 3, i % 3)
@@ -205,6 +211,7 @@ class ColorDialog(QDialog):
 
     def get_selected_color(self):
         return self.selected_color
+
 
 class CustomDialog(QDialog):
     def __init__(self):
@@ -462,11 +469,9 @@ class PaintLCM(QMainWindow):
         self.horizontalLayout_4.addWidget(self.canvas)
         self.horizontalLayout_4.addWidget(self.result_canvas)
 
-
     # drawing functions _________________________________________
     def choose_color_old(self):
         self.canvas.set_color()
-
 
     def choose_color(self):
         dialog = ColorDialog()
@@ -474,7 +479,6 @@ class PaintLCM(QMainWindow):
             selected_color = dialog.get_selected_color()
 
         self.canvas.current_color = QColor(*selected_color)
-
 
     def switch_to_pencil(self):
         self.palette_action.setEnabled(False)
@@ -486,16 +490,14 @@ class PaintLCM(QMainWindow):
 
     def switch_to_airbrush(self):
         # activate color palette
-
         self.palette_action.setEnabled(True)
         self.canvas.terminate_bezier()
         self.canvas.brush_size = 15
         self.canvas.brush_cur = self.canvas.create_circle_cursor(15)
         self.canvas.set_tool('airbrush')
-        self.canvas.active_layer = 1 # activate coloring layer
+        self.canvas.active_layer = 1  # activate coloring layer
 
         self.choose_color()
-
 
     def switch_to_bezier(self):
         self.palette_action.setEnabled(False)
@@ -647,8 +649,6 @@ class PaintLCM(QMainWindow):
             self.dockWidget_2.hide()
         else:
             self.dockWidget_2.show()
-
-
 
     def toggle_push_buttons(self):
         if self.pushButton_example.isVisible():
@@ -849,7 +849,8 @@ class PaintLCM(QMainWindow):
             support_button = msg_box.addButton('As support for drawing', QMessageBox.ButtonRole.YesRole)
             line_button = msg_box.addButton('For lines layer', QMessageBox.ButtonRole.NoRole)
             segmentation_button = msg_box.addButton('For segmentation layer', QMessageBox.ButtonRole.HelpRole)
-            segmentation_lines_button = msg_box.addButton('For segmentation and line layers', QMessageBox.ButtonRole.HelpRole)
+            segmentation_lines_button = msg_box.addButton('For segmentation and line layers',
+                                                          QMessageBox.ButtonRole.HelpRole)
 
             # Execute the message box and get the user's choice
             msg_box.exec()
@@ -886,7 +887,7 @@ class PaintLCM(QMainWindow):
 
         self.canvas.has_background = True
 
-    def import_line_image(self, update_inf = True):
+    def import_line_image(self, update_inf=True):
         # line operation
         processed_image = lcm.screen_to_lines(self.resized_image, self.line_mode)
 
@@ -963,7 +964,7 @@ class PaintLCM(QMainWindow):
             self.resized_image = temp_image
 
             # convert to edge image
-            self.import_line_image(update_inf = False)
+            self.import_line_image(update_inf=False)
 
         # Should it update continuously
         if self.checkBox.isChecked():
@@ -1097,14 +1098,14 @@ class PaintLCM(QMainWindow):
 
         for file in file_list:
             if file.endswith('.png'):
-                img_list.append(os.path.join(in_dir,file))
+                img_list.append(os.path.join(in_dir, file))
 
         print(img_list)
 
         # process all images
         for i, img in enumerate(img_list):
             out_path = os.path.join(out_sub, f'out{i}.png')
-            self.update_image(show_output=False, save_path=out_path,get_image_from_canvas=False,input_img_path=img)
+            self.update_image(show_output=False, save_path=out_path, get_image_from_canvas=False, input_img_path=img)
 
     def manual_update(self):
         self.update_image()
@@ -1156,7 +1157,7 @@ class PaintLCM(QMainWindow):
                 self.im.save('inv_line_input.png')
                 self.color_im.save('color_input.png')
                 input_img_path = 'inv_line_input.png'
-                input_color_path = 'color_input.png' # to use for segmentation
+                input_color_path = 'color_input.png'  # to use for segmentation
 
             # capture painted image
             print('running inference')
@@ -1260,6 +1261,7 @@ def main(argv=None):
     # no errors since we're not running our own event loop
     return 0
 
+
 def show_exception_box(log_msg):
     """Checks if a QApplication instance is available and shows a messagebox with the exception message.
     If unavailable (non-console application), log an additional notice.
@@ -1270,6 +1272,7 @@ def show_exception_box(log_msg):
         errorbox.exec()
     else:
         log.debug("No QApplication instance available.")
+
 
 class UncaughtHook(QObject):
     _exception_caught = pyqtSignal(object)
@@ -1298,6 +1301,7 @@ class UncaughtHook(QObject):
 
             # trigger message box show
             self._exception_caught.emit(log_msg)
+
 
 # create a global instance of our class to register the hook
 qt_exception_hook = UncaughtHook()
