@@ -56,6 +56,13 @@ You can still find the old version in the 'releases' section.
 Choose an architectural design 'type' (exterior rendering, façade elevation, interior rendering, ...) and a style. On the left, you'll find the drawing area. You can add either black lines to define the important lines of your drawing, or colored zones (a semantic map) to define where specific objects should be placed (a tree, a window, etc.). A specific color code is associated with each type of object. You don't have to worry about choosing the right color, as the graphical interface allows you to directly select the object to be drawn. 
 The drawing process itself is completely standard. Choose your tool and draw! (or delete). You'll see the proposed image adapt live (a checkbox allows you to disable live inference). 
 
+<p align="center">
+    <img src="docs/anim_seg.gif" width="800" alt="Description" style="display: block; margin: 0 auto;">
+    <p align="center">
+    <i style="display: block; margin-top: 5px;">example showing the use of segmentation brush (interior)</i>
+    </p>
+</p>
+
 If you lack inspiration, or for testing purpose, a example scribble drawing can be generated automatically.
 
 Images can also be imported to automatically generate scribbles and/or segmentation.
