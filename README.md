@@ -2,24 +2,8 @@
 
 >**Line drawing, segmentation, style transfer and upscale with Stable Diffusion!**
 
-This GUI allows generating images from simple brush strokes, or Bezier curves, in realtime. The functions have been designed primarily for use in architecture, and for sketching in the early stages of a project. It uses Stable Diffusion and ControlNet as AI backbone for the generative process. IP Adapter support is included, as well as a large library of predefined styles! Each reference image allows to transfer a specific style to your black and white line work. An upscale function was also added, to export results in high resolution. It uses a ControlNet tile.
+This GUI allows generating images from simple brush strokes, or Bezier curves, in realtime. The functions have been designed primarily for use in architecture, and for sketching in the early stages of a project. It uses Stable Diffusion and ControlNet as AI backbone for the generative process. IP Adapter support is included, as well as a large library of predefined styles! Each reference image allows to transfer a specific style to your line work. An upscale function was also added, to export results in high resolution (based on ControlNet tile).
 
-<p align="center">
-    <img src="docs/tablet2.png" width="600" alt="Tablet support" style="display: block; margin: auto auto;">
-</p>
-
-
-Many new functions added:
-- Generate random scribbles
-- Draw segmentation zone for specific objects (sky, building, windows, ...)
-- Tablet drawing support (touch screen, Ipad, ...)
-- Custom style import
-- Draw over background model
-- Import image for different purposes
-   - As a support for drawing
-   - As scribble
-   - As segmentation zone
-- ...
 
 <p align="center">
     <img src="docs/anim2.gif" width="800" alt="Description" style="display: block; margin: 0 auto;">
@@ -42,25 +26,29 @@ Many new functions added:
     </p>
 </p>
 
-## Installation
-- Install CUDA (if not done already)
-- Clone the repo and install a venv.
-- Install torch. Example for CUDA 11.8:
-```
-pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
-```
- (see https://pytorch.org/get-started/locally/)
-- Install other dependencies (see requirements):
-    - accelerate
-    - diffusers
-    - transformers
-    - PyQT6
-    - opencv-python
-    - opencv-contrib-python
-    - peft
-- Launch main.py (the first launch can be long due to the models installation process!)
+# News!
+Many new functions were recently added:
+- Generate random scribbles
+- Draw segmentation zone for specific objects (sky, building, windows, ...)
+- Tablet drawing support (touch screen, Ipad, ...)
+- Custom style import
+- Draw over background model
+- Import image for different purposes
+   - As a support for drawing
+   - As scribble
+   - As segmentation zone
+- ...
 
-## Usage
+
+
+we have recently incorporated a new layer system, when the user can draw either black lines (for feeding ControlNet Scribble) or color brush strokes (for ControlNet Segmentation). See 'Using the app'
+You can still find the old version in the 'releases' section.
+
+<p align="center">
+    <img src="docs/tablet2.png" width="500" alt="Tablet support" style="display: block; margin: auto auto;">
+</p>
+
+# Using the app
 <p align="center">
     <img src="docs/composition.png" width="600" alt="Tablet support" style="display: block; margin: auto auto;">
 </p>
@@ -102,12 +90,32 @@ Support for drawing media has recently be included. The pressure of the pen shou
 
 https://github.com/s-du/ScribbleArchitect/assets/53427781/d827b763-f7b4-4e1d-b0e7-1f628a62b924
 
-
-
 ## Options
 Live drawing requires a strong GPU, I would advice to reduce image size (in main.py) if too laggy! Image upscale is really GPU intensive...
 
-## Included models
+## Included inference models
 By default, the app uses Dreamshaper (https://huggingface.co/Lykon/dreamshaper-8). Custom models can be added in the dedicated folder ('custom_models'). Any SD1.5 checkpoint should work. 
 
+# Installation
+- Install CUDA (if not done already)
+- Clone the repo and install a venv.
+- Install torch. Example for CUDA 11.8:
+```
+pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+```
+ (see https://pytorch.org/get-started/locally/)
+- Install other dependencies (see requirements):
+    - accelerate
+    - diffusers
+    - transformers
+    - PyQT6
+    - opencv-python
+    - opencv-contrib-python
+    - peft
+- Launch main.py (the first launch can be long due to the models installation process!)
+
+# Useful references
+https://huggingface.co/lllyasviel/sd-controlnet-seg
+https://huggingface.co/lllyasviel/sd-controlnet-scribble
+  
 ![compil](docs/s_archi_compil.png)
