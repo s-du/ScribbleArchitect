@@ -41,8 +41,8 @@ Many new functions were recently added:
 
 
 
-we have recently incorporated a new layer system, when the user can draw either black lines (for feeding ControlNet Scribble) or color brush strokes (for ControlNet Segmentation). See 'Using the app'
-You can still find the old version in the 'releases' section.
+we have recently incorporated a new layer system, when the user can draw either black lines (for feeding ControlNet Scribble) or color brush strokes (for ControlNet Segmentation). See 'Using the app'.
+NOTE: You can still find the old version in the 'releases' section.
 
 <p align="center">
     <img src="docs/tablet2.png" width="500" alt="Tablet support" style="display: block; margin: auto auto;">
