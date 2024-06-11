@@ -15,7 +15,6 @@ import cv2
 import numpy as np
 from PIL import Image
 
-
 cache_path = path.join(path.dirname(path.abspath(__file__)), "models")
 
 os.environ["TRANSFORMERS_CACHE"] = cache_path
@@ -27,7 +26,6 @@ model_list = ['Dreamshaper8']
 model_ids = ["Lykon/dreamshaper-8"]
 
 LINE_METHODS = ['Sobel Custom', 'Canny', 'Canny + L2', 'Canny + BIL', 'Canny + Blur', 'RF Custom']
-
 
 PALETTE = palette = np.asarray([
     [120, 120, 120],
@@ -221,13 +219,15 @@ def otsu_threshold(image):
 
     # Compute between-class variance for each threshold
     between_class_variance = (global_mean * cumulative_sum - cumulative_mean) ** 2 / (
-                cumulative_sum * (1 - cumulative_sum))
+            cumulative_sum * (1 - cumulative_sum))
     between_class_variance = np.nan_to_num(between_class_variance)  # Handle division by zero
 
     # Find the threshold that maximizes the between-class variance
     optimal_threshold = np.argmax(between_class_variance)
 
     return optimal_threshold
+
+
 def img_to_seg(image):
     from transformers import AutoImageProcessor, UperNetForSemanticSegmentation
 
@@ -578,7 +578,7 @@ def load_models_multiple_cn(model_id="Lykon/dreamshaper-8", use_ip=True):
             model_id,
             cache_dir=cache_path,
             controlnet=controlnets,
-            controlnet_conditioning_scale=[0.9,0.9],
+            controlnet_conditioning_scale=[0.9, 0.9],
             torch_dtype=torch.float16,
             variant="fp16",
             safety_checker=None
@@ -588,7 +588,7 @@ def load_models_multiple_cn(model_id="Lykon/dreamshaper-8", use_ip=True):
             model_id,
             cache_dir=cache_path,
             controlnet=controlnets,
-            controlnet_conditioning_scale=[0.9,0.9],
+            controlnet_conditioning_scale=[0.9, 0.9],
             torch_dtype=torch.float16,
             variant="fp16",
             safety_checker=None
@@ -618,6 +618,7 @@ def load_models_multiple_cn(model_id="Lykon/dreamshaper-8", use_ip=True):
             ip_scale=0.8,
             ip_image_to_use='',
             cn_strength=[0.9, 0.9],
+            eta=1,
     ):
 
         with torch.inference_mode():
@@ -646,6 +647,173 @@ def load_models_multiple_cn(model_id="Lykon/dreamshaper-8", use_ip=True):
                             guidance_scale=guidance_scale,
                             strength=strength
                         ).images[0]
+
+    return infer
+
+
+def load_models_multiple_cn_hyper(model_id="Lykon/dreamshaper-8", use_ip=True):
+    from diffusers import ControlNetModel, TCDScheduler,DDIMScheduler, StableDiffusionControlNetPipeline
+    from diffusers.utils import load_image
+    from huggingface_hub import hf_hub_download
+
+    if not is_mac:
+        torch.backends.cuda.matmul.allow_tf32 = True
+
+    repo_name = "ByteDance/Hyper-SD"
+    ckpt_name = "Hyper-SD15-1step-lora.safetensors"
+
+    ip_adapter_name = "ip-adapter_sd15.bin"
+    controlnets = [
+        ControlNetModel.from_pretrained("lllyasviel/sd-controlnet-scribble", torch_dtype=torch.float16),
+        ControlNetModel.from_pretrained("lllyasviel/sd-controlnet-seg", torch_dtype=torch.float16)]
+
+    if 'custom' in model_id:
+        pipe = StableDiffusionControlNetPipeline.from_single_file(
+            model_id,
+            cache_dir=cache_path,
+            controlnet=controlnets,
+            controlnet_conditioning_scale=[0.9, 0.9],
+            torch_dtype=torch.float16,
+            variant="fp16",
+            safety_checker=None
+        )
+    else:
+        pipe = StableDiffusionControlNetPipeline.from_pretrained(
+            model_id,
+            cache_dir=cache_path,
+            controlnet=controlnets,
+            controlnet_conditioning_scale=[0.9, 0.9],
+            torch_dtype=torch.float16,
+            variant="fp16",
+            safety_checker=None
+        )
+
+    if use_ip:
+        pipe.load_ip_adapter("h94/IP-Adapter", subfolder="models", weight_name=ip_adapter_name)
+
+    pipe.scheduler = DDIMScheduler.from_config(pipe.scheduler.config, timestep_spacing="trailing")
+
+    pipe.load_lora_weights(hf_hub_download(repo_name, ckpt_name))
+    pipe.fuse_lora()
+
+    device = "mps" if is_mac else "cuda"
+
+    pipe.to(device=device)
+
+    generator = torch.Generator()
+
+    def infer(
+            prompt,
+            negative_prompt,
+            images,
+            num_inference_steps=4,
+            guidance_scale=1,
+            strength=0.9,
+            seed=random.randrange(0, 2 ** 63),
+            ip_scale=0.8,
+            ip_image_to_use='',
+            cn_strength=[0.9, 0.9],
+            eta=1,
+    ):
+        print(f'run hyper inference, model:{model_id}')
+        with torch.inference_mode():
+            with torch.autocast("cuda") if device == "cuda" else nullcontext():
+                with timer("inference"):
+                    if use_ip:
+                        pipe.set_ip_adapter_scale(ip_scale)
+                        return pipe(
+                            prompt=prompt,
+                            negative_prompt=negative_prompt,
+                            image=images,
+                            ip_adapter_image=load_image(ip_image_to_use),
+                            generator=generator.manual_seed(seed),
+                            num_inference_steps=num_inference_steps,
+                            guidance_scale=0,
+                            strength=strength,
+                            controlnet_conditioning_scale=cn_strength,
+                            eta=eta,
+                        ).images[0]
+                    else:
+                        return pipe(
+                            prompt=prompt,
+                            negative_prompt=negative_prompt,
+                            image=load_image(images),
+                            generator=generator.manual_seed(seed),
+                            num_inference_steps=num_inference_steps,
+                            guidance_scale=0,
+                            strength=strength
+                        ).images[0]
+
+    return infer
+
+
+def load_models_multiple_cn_hyperXL(model_id="custom_models/realvisxlV40_v40Bakedvae.safetensors", use_ip=True):
+    from diffusers import ControlNetModel, TCDScheduler, StableDiffusionXLControlNetPipeline, AutoencoderKL
+    from diffusers.utils import load_image
+    from huggingface_hub import hf_hub_download
+
+    if not is_mac:
+        torch.backends.cuda.matmul.allow_tf32 = True
+
+    repo_name = "ByteDance/Hyper-SD"
+    ckpt_name = "Hyper-SDXL-1step-lora.safetensors"
+
+    ip_adapter_name = "ip-adapter_sdxl.bin"
+    controlnet = ControlNetModel.from_pretrained("xinsir/controlnet-scribble-sdxl-1.0""", torch_dtype=torch.float16)
+    vae = AutoencoderKL.from_pretrained("madebyollin/sdxl-vae-fp16-fix", torch_dtype=torch.float16)
+
+    pipe = StableDiffusionXLControlNetPipeline.from_single_file(
+        model_id,
+        cache_dir=cache_path,
+        controlnet=controlnet,
+        controlnet_conditioning_scale=0.9,
+        torch_dtype=torch.float16,
+        variant="fp16",
+        safety_checker=None
+    )
+
+    if use_ip:
+        pipe.load_ip_adapter("h94/IP-Adapter", subfolder="sdxl_models", weight_name=ip_adapter_name)
+
+    pipe.scheduler = TCDScheduler.from_config(pipe.scheduler.config)
+    pipe.load_lora_weights(hf_hub_download(repo_name, ckpt_name))
+    pipe.fuse_lora()
+
+    device = "mps" if is_mac else "cuda"
+
+    pipe.to(device=device)
+
+    generator = torch.Generator()
+
+    def infer(
+            prompt,
+            negative_prompt,
+            image,
+            num_inference_steps=4,
+            guidance_scale=1,
+            strength=0.9,
+            seed=random.randrange(0, 2 ** 63),
+            ip_scale=0.8,
+            ip_image_to_use='',
+            cn_strength=0.9,
+    ):
+
+        with torch.inference_mode():
+            with torch.autocast("cuda") if device == "cuda" else nullcontext():
+                with timer("inference"):
+                    pipe.set_ip_adapter_scale(ip_scale)
+                    return pipe(
+                        prompt=prompt,
+                        negative_prompt=negative_prompt,
+                        image=image,
+                        ip_adapter_image=load_image(ip_image_to_use),
+                        generator=generator.manual_seed(seed),
+                        num_inference_steps=num_inference_steps,
+                        guidance_scale=0,
+                        strength=strength,
+                        controlnet_conditioning_scale=cn_strength,
+                        eta=0.2,
+                    ).images[0]
 
     return infer
 

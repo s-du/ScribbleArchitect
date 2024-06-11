@@ -47,6 +47,8 @@ SIMPLE_PROMPTS = ['A building architectural render',
                   'Ground plan landscape architect'
                   ]
 
+CAT_TYPE = ['ext', 'ext', 'ext', 'int', 'ext', 'int', 'int', 'int', 'ext', 'ext']
+
 EXAMPLE_PROMPTS = [
     'black and white coloring book illustration of a building, white background, lineart, inkscape, simple lines',
     'black and white coloring book illustration of a building, white background, lineart, inkscape, simple lines',
@@ -172,13 +174,13 @@ class DrawingWindow(QMainWindow):
 
 
 class ColorDialog(QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, categories_csv_file, parent=None):
         super(ColorDialog, self).__init__(parent)
         self.selected_color = None
         self.setWindowTitle("Select a Color")
 
         # Load the categories and colors from the CSV file
-        self.colors = self.load_colors_from_csv('resources/other/out_categories.csv')
+        self.colors = self.load_colors_from_csv(categories_csv_file)
 
         # Create the grid layout
         layout = QGridLayout()
@@ -274,9 +276,16 @@ class PaintLCM(QMainWindow):
 
         self.secondary_window = None
 
+        # hide some sliders
+        self.label_12.hide()
+        self.strength_slider_eta.hide()
+
         # loads models
+        self.use_hyper = False
         self.models = model_list
         self.models_ids = model_ids
+        self.cat_type = CAT_TYPE
+        self.current_type = 'int'
 
         # read custom models
         custom_models_file_list = os.listdir('custom_models')
@@ -426,11 +435,13 @@ class PaintLCM(QMainWindow):
         self.strength_slider.valueChanged.connect(self.update_image)
         self.strength_slider_cn.valueChanged.connect(self.update_image)
         self.strength_slider_cn_2.valueChanged.connect(self.update_image)
+        self.strength_slider_eta.valueChanged.connect(self.update_image)
 
         # checkboxes
         self.checkBox_sp.stateChanged.connect(self.change_style)
         self.checkBox_hide.stateChanged.connect(self.toggle_canvas)
         self.checkBox_float_draw.stateChanged.connect(self.toggle_secondary_window)
+        self.checkBox_hyper.stateChanged.connect(self.change_acceleration)
 
         # other actions
         self.actionAdvanced_options.triggered.connect(self.toggle_dock_visibility)
@@ -474,7 +485,11 @@ class PaintLCM(QMainWindow):
         self.canvas.set_color()
 
     def choose_color(self):
-        dialog = ColorDialog()
+        if self.current_type == 'ext':
+            csv_file = 'resources/other/out_categories.csv'
+        else:
+            csv_file = 'resources/other/in_categories.csv'
+        dialog = ColorDialog(csv_file)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             selected_color = dialog.get_selected_color()
 
@@ -1033,7 +1048,39 @@ class PaintLCM(QMainWindow):
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
 
-        self.infer = load_models_multiple_cn(model_id=self.model_id)
+        if self.checkBox_hyper.isChecked():
+            self.infer = load_models_multiple_cn_hyper(model_id=self.model_id)
+        else:
+            self.infer = load_models_multiple_cn(model_id=self.model_id)
+        self.update_image()
+
+    def change_acceleration(self):
+        if hasattr(self, 'infer'):
+            del self.infer
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+
+        if self.checkBox_hyper.isChecked():
+            self.use_hyper = True
+            self.infer = load_models_multiple_cn_hyper(model_id=self.model_id)
+
+            # change some GUI
+            self.label_12.show()
+            self.strength_slider_eta.show()
+            self.label_2.hide()
+            self.cfg_slider.hide()
+        else:
+            self.use_hyper = False
+            self.infer = load_models_multiple_cn(model_id=self.model_id)
+
+            # change some GUI
+            self.label_12.hide()
+            self.strength_slider_eta.hide()
+            self.cfg_slider.show()
+            self.label_2.show()
+
+
         self.update_image()
 
     def change_type(self):
@@ -1061,6 +1108,9 @@ class PaintLCM(QMainWindow):
         idx = self.comboBox.currentIndex()
         if not self.checkBox_keep_p.isChecked():
             self.textEdit.setText(self.all_ip_prompts[idx][0])
+
+        # store if interior or exterior
+        self.current_type = self.cat_type[idx]
 
     def change_style(self):
         idx = self.comboBox.currentIndex()
@@ -1120,6 +1170,7 @@ class PaintLCM(QMainWindow):
             # gather slider parameters:
             steps = self.step_slider.value()
             cfg = self.cfg_slider.value() / 10
+            eta = self.strength_slider_eta.value() / 10
 
             ip_strength = self.strength_slider.value() / 100
             cn_strength = self.strength_slider_cn.value() / 100
@@ -1141,7 +1192,7 @@ class PaintLCM(QMainWindow):
             seed = int(self.lineEdit_seed.text())
 
             print(
-                f'here are the parameters \n steps: {steps}\n cfg: {cfg}\n ipstrength: {ip_strength}\n prompt: {self.p}')
+                f'here are the parameters \n steps: {steps}\n cfg: {cfg}\n ipstrength: {ip_strength}\n eta: {eta}\n prompt: {self.p}')
 
             if get_image_from_canvas:
                 print('capturing drawing')
@@ -1184,7 +1235,8 @@ class PaintLCM(QMainWindow):
                 seed=seed,
                 ip_scale=ip_strength,
                 ip_image_to_use=ip_img_ref,
-                cn_strength=cn_strengths
+                cn_strength=cn_strengths,
+                eta = eta
             )
 
             self.out.save(save_path)
