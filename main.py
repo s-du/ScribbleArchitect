@@ -1068,8 +1068,12 @@ class PaintLCM(QMainWindow):
             # change some GUI
             self.label_12.show()
             self.strength_slider_eta.show()
-            self.label_2.hide()
-            self.cfg_slider.hide()
+
+            self.label.hide()
+            self.step_slider.hide()
+
+
+
         else:
             self.use_hyper = False
             self.infer = load_models_multiple_cn(model_id=self.model_id)
@@ -1079,6 +1083,9 @@ class PaintLCM(QMainWindow):
             self.strength_slider_eta.hide()
             self.cfg_slider.show()
             self.label_2.show()
+
+            self.label.show()
+            self.step_slider.show()
 
 
         self.update_image()

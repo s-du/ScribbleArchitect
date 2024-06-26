@@ -660,7 +660,7 @@ def load_models_multiple_cn_hyper(model_id="Lykon/dreamshaper-8", use_ip=True):
         torch.backends.cuda.matmul.allow_tf32 = True
 
     repo_name = "ByteDance/Hyper-SD"
-    ckpt_name = "Hyper-SD15-1step-lora.safetensors"
+    ckpt_name = "Hyper-SD15-12steps-CFG-lora.safetensors"
 
     ip_adapter_name = "ip-adapter_sd15.bin"
     controlnets = [
@@ -691,7 +691,7 @@ def load_models_multiple_cn_hyper(model_id="Lykon/dreamshaper-8", use_ip=True):
     if use_ip:
         pipe.load_ip_adapter("h94/IP-Adapter", subfolder="models", weight_name=ip_adapter_name)
 
-    pipe.scheduler = DDIMScheduler.from_config(pipe.scheduler.config, timestep_spacing="trailing")
+    pipe.scheduler = TCDScheduler.from_config(pipe.scheduler.config)
 
     pipe.load_lora_weights(hf_hub_download(repo_name, ckpt_name))
     pipe.fuse_lora()
@@ -727,8 +727,8 @@ def load_models_multiple_cn_hyper(model_id="Lykon/dreamshaper-8", use_ip=True):
                             image=images,
                             ip_adapter_image=load_image(ip_image_to_use),
                             generator=generator.manual_seed(seed),
-                            num_inference_steps=num_inference_steps,
-                            guidance_scale=0,
+                            num_inference_steps=12,
+                            guidance_scale=guidance_scale,
                             strength=strength,
                             controlnet_conditioning_scale=cn_strength,
                             eta=eta,
