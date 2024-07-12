@@ -1049,6 +1049,7 @@ class PaintLCM(QMainWindow):
                 torch.cuda.empty_cache()
 
         if self.checkBox_hyper.isChecked():
+
             self.infer = load_models_multiple_cn_hyper(model_id=self.model_id)
         else:
             self.infer = load_models_multiple_cn(model_id=self.model_id)
@@ -1062,6 +1063,8 @@ class PaintLCM(QMainWindow):
                 torch.cuda.empty_cache()
 
         if self.checkBox_hyper.isChecked():
+            # set cfg value
+            self.cfg_slider.setValue(30)
             self.use_hyper = True
             self.infer = load_models_multiple_cn_hyper(model_id=self.model_id)
 
