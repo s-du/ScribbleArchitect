@@ -1064,9 +1064,10 @@ class PaintLCM(QMainWindow):
 
         if self.checkBox_hyper.isChecked():
             # set cfg value
-            self.cfg_slider.setValue(30)
+
             self.use_hyper = True
             self.infer = load_models_multiple_cn_hyper(model_id=self.model_id)
+            self.cfg_slider.setValue(30)
 
             # change some GUI
             self.label_12.show()
