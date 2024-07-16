@@ -21,6 +21,7 @@ from PyQt6.QtWidgets import *
 
 import lcm
 from lcm import *
+from upscale_flow import *
 import widgets as wid
 import resources as res
 
@@ -34,7 +35,7 @@ BASE_DIR = res.find('img/AI_ref_images_bo')
 IMG_W = 1024
 IMG_H = 768
 CAPTURE_INT = 1000  # milliseconds
-HD_RES = 1024  # resolution for upscale
+HD_RES = 2048  # resolution for upscale
 SIMPLE_PROMPTS = ['A building architectural drawing from a manga',
                   'A building architectural render',
                   'A building artistic architectural drawing',
@@ -46,7 +47,8 @@ SIMPLE_PROMPTS = ['A building architectural drawing from a manga',
                   'The drawing of an interior',
                   'Interior architectural render',
                   'Isometric building',
-                  'Ground plan landscape architect'
+                  'Ground plan landscape architect',
+                  'A building'
                   ]
 
 CAT_TYPE = ['ext','ext', 'ext', 'ext', 'int', 'ext', 'int','int', 'int', 'int', 'ext', 'ext']
@@ -64,7 +66,8 @@ EXAMPLE_PROMPTS = [
     'coloring page of an interior, line art, white background',
     'isometric building in a coloring book, line art, white background, simplistic',
     'a site map, black and white, coloring book drawing, line art',
-    'some architectural drawing']
+    'some architectural drawing',
+    'A building']
 
 
 def new_dir(dir_path):
@@ -718,7 +721,7 @@ class PaintLCM(QMainWindow):
         )
 
         print('running upscale...')
-        out = lcm.tile_upscale(self.out, self.p, HD_RES)
+        out = super_tile_upscale(self.out, self.p, HD_RES)
 
         # Save the image if a file path was provided, using high-quality settings for JPEG
         if file_path:
