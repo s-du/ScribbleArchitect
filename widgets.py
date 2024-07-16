@@ -212,6 +212,8 @@ class Canvas(QGraphicsView):
         self.coloring_layer = QPixmap(self.w, self.h)
         self.coloring_layer.fill(Qt.GlobalColor.transparent)
 
+        self.update_drawing_coloring_layers()
+
     def set_transparency(self, transparent):
         """ Set the transparency of the canvas. """
         if transparent:
