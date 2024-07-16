@@ -58,7 +58,7 @@
      <x>0</x>
      <y>0</y>
      <width>1563</width>
-     <height>24</height>
+     <height>20</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuExport">
@@ -357,7 +357,7 @@
             <number>12</number>
            </property>
            <property name="value">
-            <number>4</number>
+            <number>8</number>
            </property>
            <property name="orientation">
             <enum>Qt::Horizontal</enum>
@@ -570,11 +570,14 @@
            <property name="singleStep">
             <number>1</number>
            </property>
-           <property name="value">
+           <property name="pageStep">
             <number>5</number>
            </property>
+           <property name="value">
+            <number>6</number>
+           </property>
            <property name="sliderPosition">
-            <number>5</number>
+            <number>6</number>
            </property>
            <property name="orientation">
             <enum>Qt::Horizontal</enum>

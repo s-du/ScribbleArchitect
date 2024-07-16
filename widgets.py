@@ -402,6 +402,7 @@ class Canvas(QGraphicsView):
             if self.drawing:
                 self.drawing = False
                 self.tablet = False
+                self.endDrawing.emit()
 
         event.accept()
 

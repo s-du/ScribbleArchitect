@@ -31,8 +31,8 @@ log.addHandler(handler)
 
 # Params
 BASE_DIR = res.find('img/AI_ref_images_bo')
-IMG_W = 512
-IMG_H = 512
+IMG_W = 1024
+IMG_H = 1024
 CAPTURE_INT = 1000  # milliseconds
 HD_RES = 1024  # resolution for upscale
 SIMPLE_PROMPTS = ['A building architectural drawing from a manga',
@@ -1053,6 +1053,7 @@ class PaintLCM(QMainWindow):
                 torch.cuda.empty_cache()
 
         if self.checkBox_hyper.isChecked():
+
             self.infer = load_models_multiple_cn_hyper(model_id=self.model_id)
         else:
             self.infer = load_models_multiple_cn(model_id=self.model_id)
@@ -1066,8 +1067,11 @@ class PaintLCM(QMainWindow):
                 torch.cuda.empty_cache()
 
         if self.checkBox_hyper.isChecked():
+            # set cfg value
+
             self.use_hyper = True
             self.infer = load_models_multiple_cn_hyper(model_id=self.model_id)
+            self.cfg_slider.setValue(30)
 
             # change some GUI
             self.label_12.show()
