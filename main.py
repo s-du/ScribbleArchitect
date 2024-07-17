@@ -32,9 +32,9 @@ log.addHandler(handler)
 # Params
 BASE_DIR = res.find('img/AI_ref_images_bo')
 IMG_W = 1024
-IMG_H = 1024
+IMG_H = 768
 CAPTURE_INT = 1000  # milliseconds
-HD_RES = 1024  # resolution for upscale
+HD_RES = 2048  # resolution for upscale
 SIMPLE_PROMPTS = ['A building architectural drawing from a manga',
                   'A building architectural render',
                   'A building artistic architectural drawing',
