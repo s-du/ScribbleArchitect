@@ -28,11 +28,12 @@ This GUI allows generating images from simple brush strokes, or Bezier curves, i
 
 # News!
 Many new functions were recently added:
+- Support of Hyper-SD (as an alternative to LCM)
 - Generate random scribbles
 - Draw segmentation zone for specific objects (sky, building, windows, ...)
 - Tablet drawing support (touch screen, Ipad, ...)
 - Custom style import
-- Draw over background model
+- Custom models import (e.g. from Civitai)
 - Import image for different purposes
    - As a support for drawing
    - As scribble
