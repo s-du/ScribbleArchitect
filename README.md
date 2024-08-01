@@ -112,6 +112,11 @@ By default, the app uses Dreamshaper (https://huggingface.co/Lykon/dreamshaper-8
 pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
 ```
  (see https://pytorch.org/get-started/locally/)
+
+- Install Real-ESRGAN:
+```
+pip install git+https://github.com/sberbank-ai/Real-ESRGAN.git
+```
 - Install other dependencies (see requirements):
     - accelerate
     - diffusers
